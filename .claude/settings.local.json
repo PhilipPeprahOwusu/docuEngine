@@ -30,7 +30,9 @@
       "Bash(ngrok http:*)",
       "Bash(npm run build:*)",
       "Bash({} ;)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

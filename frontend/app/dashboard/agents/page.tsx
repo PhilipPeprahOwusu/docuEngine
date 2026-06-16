@@ -4,6 +4,17 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Plus,
   Settings,
@@ -17,9 +28,20 @@ import {
   FileEdit,
   Zap
 } from 'lucide-react';
+import { agentAPI } from '@/lib/api';
 
 export default function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newAgent, setNewAgent] = useState({
+    name: '',
+    description: '',
+    system_prompt: '',
+    temperature: 0.7,
+    max_tokens: 4000,
+    capabilities: [] as string[],
+  });
 
   const builtInAgents = [
     {
@@ -113,7 +135,7 @@ export default function AgentsPage() {
             Configure and deploy custom AI agents for contract intelligence
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
           <Plus className="h-4 w-4" />
           Create Custom Agent
         </Button>
@@ -289,6 +311,126 @@ export default function AgentsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Create Agent Modal */}
+      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create Custom AI Agent</DialogTitle>
+            <DialogDescription>
+              Build a custom AI agent tailored to your specific contract intelligence needs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Agent Name */}
+            <div className="space-y-2">
+              <Label htmlFor="agent-name">Agent Name</Label>
+              <Input
+                id="agent-name"
+                placeholder="e.g., SaaS Contract Reviewer"
+                value={newAgent.name}
+                onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="agent-description">Description</Label>
+              <Input
+                id="agent-description"
+                placeholder="Brief description of what this agent does"
+                value={newAgent.description}
+                onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
+              />
+            </div>
+
+            {/* System Prompt */}
+            <div className="space-y-2">
+              <Label htmlFor="agent-prompt">System Prompt</Label>
+              <Textarea
+                id="agent-prompt"
+                placeholder="You are an AI agent specialized in..."
+                rows={6}
+                value={newAgent.system_prompt}
+                onChange={(e) => setNewAgent({ ...newAgent, system_prompt: e.target.value })}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                Define the agent's behavior, expertise, and instructions
+              </p>
+            </div>
+
+            {/* Temperature */}
+            <div className="space-y-2">
+              <Label htmlFor="agent-temperature">
+                Temperature: {newAgent.temperature}
+              </Label>
+              <input
+                id="agent-temperature"
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={newAgent.temperature}
+                onChange={(e) => setNewAgent({ ...newAgent, temperature: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Lower = more focused, Higher = more creative
+              </p>
+            </div>
+
+            {/* Max Tokens */}
+            <div className="space-y-2">
+              <Label htmlFor="agent-tokens">Max Tokens</Label>
+              <Input
+                id="agent-tokens"
+                type="number"
+                min="100"
+                max="8000"
+                value={newAgent.max_tokens}
+                onChange={(e) => setNewAgent({ ...newAgent, max_tokens: parseInt(e.target.value) })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCreateModalOpen(false)}
+              disabled={creating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                setCreating(true);
+                try {
+                  await agentAPI.createCustomAgent(newAgent);
+                  setCreateModalOpen(false);
+                  setNewAgent({
+                    name: '',
+                    description: '',
+                    system_prompt: '',
+                    temperature: 0.7,
+                    max_tokens: 4000,
+                    capabilities: [],
+                  });
+                  alert('Agent created successfully!');
+                  // Optionally reload agents list here
+                } catch (error) {
+                  console.error('Failed to create agent:', error);
+                  alert('Failed to create agent. Please try again.');
+                } finally {
+                  setCreating(false);
+                }
+              }}
+              disabled={creating || !newAgent.name || !newAgent.system_prompt}
+            >
+              {creating ? 'Creating...' : 'Create Agent'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

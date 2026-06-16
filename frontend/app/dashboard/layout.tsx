@@ -30,16 +30,39 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Documents', href: '/dashboard/documents', icon: FileText },
-  { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
-  { name: 'AI Agents', href: '/dashboard/agents', icon: Workflow },
-  { name: 'Analysis', href: '/dashboard/analysis', icon: Bot },
-  { name: 'Contracts', href: '/dashboard/contracts', icon: FileEdit },
-  { name: 'Playbooks', href: '/dashboard/playbooks', icon: BookOpen },
-  { name: 'Policies', href: '/dashboard/policies', icon: ShieldCheck },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+const navigationGroups = [
+  {
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    ]
+  },
+  {
+    title: 'DOCUMENT MANAGEMENT',
+    items: [
+      { name: 'Documents', href: '/dashboard/documents', icon: FileText },
+      { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare },
+    ]
+  },
+  {
+    title: 'AI & INTELLIGENCE',
+    items: [
+      { name: 'AI Agents', href: '/dashboard/agents', icon: Workflow },
+      { name: 'Analysis', href: '/dashboard/analysis', icon: Bot },
+      { name: 'Contracts', href: '/dashboard/contracts', icon: FileEdit },
+    ]
+  },
+  {
+    title: 'COMPLIANCE & POLICY',
+    items: [
+      { name: 'Playbooks', href: '/dashboard/playbooks', icon: BookOpen },
+      { name: 'Policies', href: '/dashboard/policies', icon: ShieldCheck },
+    ]
+  },
+  {
+    items: [
+      { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+    ]
+  },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -97,17 +120,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-700 font-medium transition-colors hover:bg-gray-100 hover:text-gray-900"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-sm">{item.name}</span>
-              </Link>
+          <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+            {navigationGroups.map((group, groupIndex) => (
+              <div key={groupIndex} className={groupIndex > 0 ? 'mt-6' : ''}>
+                {group.title && (
+                  <div className="px-3 mb-2">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      {group.title}
+                    </h3>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-700 font-medium transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span className="text-sm">{item.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
 
