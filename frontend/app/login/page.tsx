@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 import { authAPI, userAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 
@@ -58,9 +60,19 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
+        <CardHeader className="space-y-3">
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
           <CardDescription>Sign in to your Document Intelligence Platform</CardDescription>
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-800">
+              <strong>Recruiters:</strong> Use these credentials to sign in to the dashboard
+              <div className="mt-2 font-mono text-xs">
+                <div>Email: demo@example.com</div>
+                <div>Password: demo1234</div>
+              </div>
+            </AlertDescription>
+          </Alert>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
