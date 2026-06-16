@@ -26,7 +26,8 @@ import {
   MessageSquare,
   Workflow,
   FileEdit,
-  BookOpen
+  BookOpen,
+  CheckSquare
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -56,6 +57,7 @@ const navigationGroups = [
     items: [
       { name: 'Playbooks', href: '/dashboard/playbooks', icon: BookOpen },
       { name: 'Policies', href: '/dashboard/policies', icon: ShieldCheck },
+      { name: 'Approvals', href: '/dashboard/approvals', icon: CheckSquare },
     ]
   },
   {

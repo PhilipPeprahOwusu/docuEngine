@@ -18,12 +18,16 @@ class PolicyException(Base):
     violation_id = Column(UUID(as_uuid=True), ForeignKey("policy_violations_with_citations.violation_id"))
 
     exception_reason = Column(Text)
-    approved_by = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    status = Column(String(50), default="pending")  # pending, approved, rejected
+    requested_by = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    approved_by = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=True)
     approval_timestamp = Column(DateTime(timezone=True))
+    rejection_reason = Column(Text, nullable=True)
     valid_until = Column(Date)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     document = relationship("Document", back_populates="policy_exceptions")
     policy = relationship("CompanyPolicy", back_populates="policy_exceptions")
+    requester = relationship("User", foreign_keys=[requested_by])
     approver = relationship("User", back_populates="approved_exceptions", foreign_keys=[approved_by])
