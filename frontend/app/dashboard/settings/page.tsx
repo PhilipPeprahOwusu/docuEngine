@@ -4,7 +4,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, Check } from 'lucide-react';
+import { Save, Check, Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { notificationAPI } from '@/lib/api';
 
 export default function SettingsPage() {
   const [selectedProvider, setSelectedProvider] = useState('anthropic');
@@ -17,6 +20,12 @@ export default function SettingsPage() {
     openai: 'gpt-4-turbo-preview',
     anthropic: 'claude-3-5-sonnet-20241022',
     gemini: 'gemini-pro',
+  });
+  const [slackWebhooks, setSlackWebhooks] = useState({
+    riskAlerts: '',
+    policyViolations: '',
+    contractIntake: '',
+    weeklyReports: '',
   });
   const [saved, setSaved] = useState(false);
 
@@ -44,11 +53,22 @@ export default function SettingsPage() {
     },
   ];
 
-  const handleSave = () => {
-    // In real app, save to backend
-    console.log('Saving settings:', { selectedProvider, apiKeys, models });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    try {
+      // Save Slack webhooks if any are configured
+      if (Object.values(slackWebhooks).some(url => url.trim() !== '')) {
+        await notificationAPI.saveSlackWebhooks(slackWebhooks);
+      }
+
+      // TODO: Save LLM provider settings to backend
+      console.log('Saving settings:', { selectedProvider, apiKeys, models });
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('Failed to save settings. Please try again.');
+    }
   };
 
   return (
@@ -206,6 +226,97 @@ export default function SettingsPage() {
               <option value="pinecone">Pinecone</option>
               <option value="weaviate">Weaviate</option>
             </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Slack Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                Slack Integration
+              </CardTitle>
+              <CardDescription>
+                Configure Slack webhooks for automated contract intelligence notifications
+              </CardDescription>
+            </div>
+            <Badge variant="outline">Optional</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Risk Alerts Webhook */}
+          <div className="space-y-2">
+            <Label htmlFor="slack-risk">High-Risk Contract Alerts</Label>
+            <Input
+              id="slack-risk"
+              type="url"
+              placeholder="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+              value={slackWebhooks.riskAlerts}
+              onChange={(e) => setSlackWebhooks({ ...slackWebhooks, riskAlerts: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Sends alerts when contracts with risk score ≥ 7.0 are detected (#legal-alerts channel recommended)
+            </p>
+          </div>
+
+          {/* Policy Violations Webhook */}
+          <div className="space-y-2">
+            <Label htmlFor="slack-policy">Policy Violation Notifications</Label>
+            <Input
+              id="slack-policy"
+              type="url"
+              placeholder="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+              value={slackWebhooks.policyViolations}
+              onChange={(e) => setSlackWebhooks({ ...slackWebhooks, policyViolations: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Notifies when policy violations are detected (#compliance channel recommended)
+            </p>
+          </div>
+
+          {/* Contract Intake Webhook */}
+          <div className="space-y-2">
+            <Label htmlFor="slack-intake">Contract Upload Notifications</Label>
+            <Input
+              id="slack-intake"
+              type="url"
+              placeholder="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+              value={slackWebhooks.contractIntake}
+              onChange={(e) => setSlackWebhooks({ ...slackWebhooks, contractIntake: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Notifies team when new contracts are uploaded (#contract-intake channel recommended)
+            </p>
+          </div>
+
+          {/* Weekly Reports Webhook */}
+          <div className="space-y-2">
+            <Label htmlFor="slack-weekly">Weekly Contract Insights</Label>
+            <Input
+              id="slack-weekly"
+              type="url"
+              placeholder="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+              value={slackWebhooks.weeklyReports}
+              onChange={(e) => setSlackWebhooks({ ...slackWebhooks, weeklyReports: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Sends weekly contract intelligence summary (#executive-summary channel recommended)
+            </p>
+          </div>
+
+          {/* Setup Instructions */}
+          <div className="rounded-lg bg-slate-100 p-4 text-sm">
+            <p className="font-semibold mb-2">How to get Slack webhook URLs:</p>
+            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+              <li>Go to your Slack workspace settings</li>
+              <li>Navigate to Apps → Incoming Webhooks</li>
+              <li>Click "Add to Slack" and select a channel</li>
+              <li>Copy the webhook URL and paste it above</li>
+              <li>Repeat for each notification type you want to enable</li>
+            </ol>
           </div>
         </CardContent>
       </Card>
