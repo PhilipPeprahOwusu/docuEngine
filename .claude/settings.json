@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git remote *)",
+      "Bash(git reset *)",
+      "Bash(git filter-branch *)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --tree-filter 'if [ -f k8s/secrets-gcp.yaml ]; then sed -i \"\" \"s/sk-ant-[a-zA-Z0-9_-]*[^\\\\\"]/sk-ant-YOUR-KEY-HERE/g\" k8s/secrets-gcp.yaml && sed -i \"\" \"s/y+9umHSOAeU3s9wTkAUKoe+e5bFDEVy+/YOUR-PASSWORD-HERE/g\" k8s/secrets-gcp.yaml && sed -i \"\" \"s/9eea20eeb1467990fd6fe673b3e07480c92c6384d22897d7683286f49e78edbf/YOUR-SECRET-HERE/g\" k8s/secrets-gcp.yaml; fi' -- --all)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed \"s/🤖 Generated with \\\\[Claude Code\\\\]\\(https:\\\\/\\\\/claude\\\\.com\\\\/claude-code\\)//g\" | sed \"s/Co-Authored-By: Claude <noreply@anthropic.com>//g\" | sed \"/^$/N;/^\\\\n$/!P;D\"' -- --all)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --env-filter ' *)",
+      "Bash(gh repo *)",
+      "Bash(gh auth *)"
+    ]
+  }
+}
