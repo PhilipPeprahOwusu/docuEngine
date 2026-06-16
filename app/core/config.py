@@ -46,10 +46,18 @@ class Settings(BaseSettings):
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str = ""  # Optional
 
-    # AWS Configuration
+    # Cloud Storage Configuration
+    STORAGE_PROVIDER: str = "gcp"  # Options: gcp, aws, local
+
+    # AWS Configuration (if using AWS)
     AWS_REGION: str = "us-east-1"
     AWS_ACCOUNT_ID: str = ""
     S3_BUCKET: str = "contract-intelligence-docs"
+
+    # GCP Configuration (if using GCP)
+    GCP_PROJECT_ID: str = "docu-engine-499519"
+    GCS_BUCKET: str = "docuengine-documents"
+    GCP_CREDENTIALS_PATH: str = ""  # Path to service account JSON (optional if using workload identity)
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379"

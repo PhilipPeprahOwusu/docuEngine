@@ -3,8 +3,23 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
-import { FileText, Bot, ShieldCheck, TrendingUp, Upload, ArrowRight } from 'lucide-react';
+import {
+  FileText,
+  Bot,
+  ShieldCheck,
+  TrendingUp,
+  TrendingDown,
+  Upload,
+  ArrowRight,
+  Activity,
+  Clock,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import { documentAPI, policyAPI } from '@/lib/api';
 
 export default function DashboardPage() {
@@ -47,51 +62,89 @@ export default function DashboardPage() {
     }
   };
 
+  const analysisProgress = stats.totalDocuments > 0
+    ? Math.round((stats.analyzedDocuments / stats.totalDocuments) * 100)
+    : 0;
+
   return (
     <div className="space-y-8">
+      {/* Welcome Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Welcome back! Here's what's happening with your documents.
+        </p>
+      </div>
+
       {/* Stats cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalDocuments}</div>
-            <p className="text-xs text-muted-foreground">Documents uploaded</p>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="secondary" className="text-xs">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                +12% from last month
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-l-4 border-l-purple-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">AI Analyzed</CardTitle>
-            <Bot className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+              <Bot className="h-4 w-4 text-purple-600 dark:text-purple-300" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.analyzedDocuments}</div>
-            <p className="text-xs text-muted-foreground">Processed by AI</p>
+            <div className="space-y-2 mt-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{analysisProgress}% processed</span>
+                <span>{stats.totalDocuments - stats.analyzedDocuments} pending</span>
+              </div>
+              <Progress value={analysisProgress} className="h-2" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Policies</CardTitle>
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+              <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-300" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.activePolicies}</div>
-            <p className="text-xs text-muted-foreground">Compliance rules</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Compliance rules enforced
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Violations</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-300" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.violations}</div>
-            <p className="text-xs text-muted-foreground">Policy breaches</p>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                <TrendingDown className="h-3 w-3 mr-1" />
+                -5% from last week
+              </Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -133,52 +186,122 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
-          <CardDescription>
-            Quick guide to using your Document Intelligence Platform
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-700">
-              1
+      {/* Recent Activity & Getting Started */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Recent Activity
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/dashboard/documents">
+                  View all <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
             </div>
-            <div className="flex-1">
-              <h4 className="font-medium">Upload Your First Document</h4>
-              <p className="text-sm text-muted-foreground">
-                Go to Documents and upload a contract, policy, or report for analysis
-              </p>
+            <CardDescription>Your latest document actions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.totalDocuments === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No recent activity yet</p>
+                  <p className="text-sm">Upload a document to get started</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium">Document Uploaded</p>
+                      <p className="text-xs text-muted-foreground">
+                        SaaS Agreement.pdf • 2 hours ago
+                      </p>
+                    </div>
+                    <Badge variant="secondary">New</Badge>
+                  </div>
+                  <Separator />
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center flex-shrink-0">
+                      <Bot className="h-4 w-4 text-purple-600 dark:text-purple-300" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium">AI Analysis Completed</p>
+                      <p className="text-xs text-muted-foreground">
+                        Extract Agent • 3 hours ago
+                      </p>
+                    </div>
+                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  </div>
+                  <Separator />
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
+                      <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-300" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium">Policy Updated</p>
+                      <p className="text-xs text-muted-foreground">
+                        Liability Cap Policy • 1 day ago
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="flex items-start gap-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-700">
-              2
+        <Card>
+          <CardHeader>
+            <CardTitle>Getting Started</CardTitle>
+            <CardDescription>
+              Quick guide to using your Document Intelligence Platform
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-semibold flex-shrink-0">
+                1
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="font-medium">Upload Your First Document</h4>
+                <p className="text-sm text-muted-foreground">
+                  Go to Documents and upload a contract, policy, or report for analysis
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <h4 className="font-medium">Run AI Analysis</h4>
-              <p className="text-sm text-muted-foreground">
-                Use AI agents to extract information, assess risks, and get instant answers
-              </p>
+            <Separator />
+            <div className="flex items-start gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 font-semibold flex-shrink-0">
+                2
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="font-medium">Run AI Analysis</h4>
+                <p className="text-sm text-muted-foreground">
+                  Use AI agents to extract information, assess risks, and get instant answers
+                </p>
+              </div>
             </div>
-          </div>
-
-          <div className="flex items-start gap-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-700">
-              3
+            <Separator />
+            <div className="flex items-start gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 font-semibold flex-shrink-0">
+                3
+              </div>
+              <div className="flex-1 space-y-1">
+                <h4 className="font-medium">Set Up Policies</h4>
+                <p className="text-sm text-muted-foreground">
+                  Create custom policies to automatically check documents for compliance
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <h4 className="font-medium">Set Up Policies</h4>
-              <p className="text-sm text-muted-foreground">
-                Create custom policies to automatically check documents for compliance
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

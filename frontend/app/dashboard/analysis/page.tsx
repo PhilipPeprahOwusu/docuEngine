@@ -119,64 +119,170 @@ export default function AnalysisPage() {
     if (results.error) {
       return (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-800">{results.error}</p>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-red-800 mb-1">Analysis Failed</p>
+              <p className="text-sm text-red-700">{results.error}</p>
+            </div>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         {activeAgent === 'extract' && (
-          <div className="space-y-3">
-            <h3 className="font-semibold flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              Extracted Information
-            </h3>
-            <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">
-              {JSON.stringify(results.extraction, null, 2)}
-            </pre>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+              <h3 className="text-xl font-semibold">Extracted Information</h3>
+            </div>
+
+            {/* Display extracted data as structured cards */}
+            {results.extraction && typeof results.extraction === 'object' ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {Object.entries(results.extraction).map(([key, value]) => (
+                  <Card key={key}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-muted-foreground capitalize">
+                        {key.replace(/_/g, ' ')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-base font-semibold">
+                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">
+                {JSON.stringify(results.extraction, null, 2)}
+              </pre>
+            )}
           </div>
         )}
 
         {activeAgent === 'risk' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Shield className="h-5 w-5 text-gray-700" />
-                Risk Assessment
-              </h3>
-              <Badge variant={results.compliance_score > 70 ? 'default' : 'destructive'}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Shield className="h-6 w-6 text-gray-700" />
+                <h3 className="text-xl font-semibold">Risk Assessment</h3>
+              </div>
+              <Badge
+                variant={results.compliance_score > 70 ? 'default' : 'destructive'}
+                className="text-lg px-4 py-1"
+              >
                 Score: {results.compliance_score}%
               </Badge>
             </div>
-            <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">
-              {JSON.stringify(results.risks, null, 2)}
-            </pre>
+
+            {/* Display risks as cards */}
+            {results.risks && typeof results.risks === 'object' ? (
+              <div className="space-y-3">
+                {Object.entries(results.risks).map(([category, items]: [string, any]) => (
+                  <Card key={category} className="border-l-4 border-l-yellow-500">
+                    <CardHeader>
+                      <CardTitle className="text-base capitalize flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                        {category.replace(/_/g, ' ')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {Array.isArray(items) ? (
+                        <ul className="space-y-2">
+                          {items.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm">
+                              <span className="text-yellow-600 mt-0.5">•</span>
+                              <span>{typeof item === 'object' ? JSON.stringify(item) : String(item)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm">{String(items)}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">
+                {JSON.stringify(results.risks, null, 2)}
+              </pre>
+            )}
           </div>
         )}
 
         {activeAgent === 'compare' && (
-          <div className="space-y-3">
-            <h3 className="font-semibold flex items-center gap-2">
-              <GitCompare className="h-5 w-5 text-purple-600" />
-              Document Comparison
-            </h3>
-            <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">
-              {JSON.stringify(results.comparison, null, 2)}
-            </pre>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <GitCompare className="h-6 w-6 text-purple-600" />
+              <h3 className="text-xl font-semibold">Document Comparison</h3>
+            </div>
+
+            {/* Display comparison as structured diff */}
+            {results.comparison && typeof results.comparison === 'object' ? (
+              <div className="space-y-3">
+                {Object.entries(results.comparison).map(([section, diff]: [string, any]) => (
+                  <Card key={section}>
+                    <CardHeader>
+                      <CardTitle className="text-base capitalize">
+                        {section.replace(/_/g, ' ')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm space-y-2">
+                        {typeof diff === 'object' ? (
+                          Object.entries(diff).map(([key, value]) => (
+                            <div key={key} className="flex gap-2">
+                              <span className="font-medium min-w-24 capitalize">
+                                {key.replace(/_/g, ' ')}:
+                              </span>
+                              <span className="text-muted-foreground">{String(value)}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <span>{String(diff)}</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">
+                {JSON.stringify(results.comparison, null, 2)}
+              </pre>
+            )}
           </div>
         )}
 
         {activeAgent === 'qa' && (
-          <div className="space-y-3">
-            <h3 className="font-semibold flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-orange-600" />
-              Answer
-            </h3>
-            <div className="rounded-lg bg-slate-100 p-4">
-              <p className="text-sm text-muted-foreground mb-2">Q: {results.question}</p>
-              <p className="text-sm">{results.answer}</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquare className="h-6 w-6 text-orange-600" />
+              <h3 className="text-xl font-semibold">Q&A Response</h3>
             </div>
+
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="bg-slate-50">
+                <div className="flex items-start gap-2">
+                  <MessageSquare className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <p className="text-sm font-medium">Question:</p>
+                </div>
+                <p className="text-base mt-2">{results.question}</p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-2 mb-3">
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                  <p className="text-sm font-medium">Answer:</p>
+                </div>
+                <p className="text-base leading-relaxed">{results.answer}</p>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

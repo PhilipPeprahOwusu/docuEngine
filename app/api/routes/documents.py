@@ -6,10 +6,14 @@ from app.db.session import get_db
 from app.models.document import Document
 from app.models.user import User
 from app.core.security import oauth2_scheme, decode_access_token
+from app.core.config import settings
+from app.services.storage_service import StorageService
 from datetime import datetime
 import uuid
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def get_current_user_from_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
@@ -28,39 +32,50 @@ async def get_current_user_from_token(token: str = Depends(oauth2_scheme), db: S
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    document_type: str = Form("contract"),
+    document_type: str = Form(default="contract"),
     current_user: User = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
-    """Upload a new document"""
+    """Upload a new document to cloud storage"""
     try:
-        # Read file content
-        content = await file.read()
+        logger.info(f"Uploading document: {file.filename} for user: {current_user.user_id}")
 
-        # Try to decode as text, fallback to storing file info only
+        # Initialize storage service
+        storage = StorageService(provider=settings.STORAGE_PROVIDER)
+
+        # Upload file to cloud storage
+        storage_key, file_content = await storage.upload_file(
+            file=file,
+            org_id=str(current_user.org_id)
+        )
+
+        # Extract text content for indexing (for text files)
+        content_preview = None
         try:
-            content_str = content.decode('utf-8')
+            content_preview = file_content.decode('utf-8')[:10000]  # Store first 10KB for preview
         except UnicodeDecodeError:
-            # For binary files (PDF, DOCX), store placeholder
-            # In production, this would be uploaded to S3 and processed separately
-            content_str = f"[Binary file: {file.filename}]\nFile type: {file.content_type}\nSize: {len(content)} bytes\n\nNote: This is a placeholder for binary content. In production, the file would be stored in S3 and processed via document parsing service (PyPDF2/python-docx)."
+            # Binary file - will be processed later by document parsing service
+            content_preview = f"[Binary file: {file.filename}]"
 
         # Create document record
         new_document = Document(
             document_id=uuid.uuid4(),
             org_id=current_user.org_id,
             filename=file.filename,
-            file_size_bytes=len(content),
-            content=content_str,
+            file_size_bytes=len(file_content),
+            content=content_preview,  # Store preview or binary placeholder
             document_type=document_type,
             created_by=current_user.user_id,
             parties=[],
-            s3_key=None  # TODO: Upload to S3 for binary files
+            s3_key=storage_key,  # Store cloud storage key
+            status="pending"
         )
 
         db.add(new_document)
         db.commit()
         db.refresh(new_document)
+
+        logger.info(f"Document uploaded successfully: {new_document.document_id}")
 
         return {
             "id": str(new_document.document_id),
@@ -68,10 +83,12 @@ async def upload_document(
             "document_type": new_document.document_type,
             "file_size": new_document.file_size_bytes,
             "created_at": new_document.created_at.isoformat(),
-            "status": "uploaded"
+            "status": "uploaded",
+            "storage_key": storage_key
         }
 
     except Exception as e:
+        logger.error(f"Upload failed: {str(e)}", exc_info=True)
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Upload failed: {str(e)}")
 

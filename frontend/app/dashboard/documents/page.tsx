@@ -7,6 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
   Upload,
   File,
   FileText,
@@ -14,8 +30,19 @@ import {
   Download,
   Search,
   Filter,
-  Plus
+  Plus,
+  ArrowUpDown,
+  MoreHorizontal,
+  Eye
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { documentAPI } from '@/lib/api';
 
 interface Document {
@@ -28,6 +55,9 @@ interface Document {
   parties: string[];
 }
 
+type SortField = 'filename' | 'document_type' | 'file_size' | 'created_at';
+type SortOrder = 'asc' | 'desc';
+
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +66,10 @@ export default function DocumentsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState('contract');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadDocuments();
@@ -112,9 +146,71 @@ export default function DocumentsPage() {
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
 
-  const filteredDocuments = documents.filter(doc =>
-    doc.filename.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDocs.size === filteredDocuments.length) {
+      setSelectedDocs(new Set());
+    } else {
+      setSelectedDocs(new Set(filteredDocuments.map(doc => doc.id)));
+    }
+  };
+
+  const toggleSelectDoc = (id: string) => {
+    const newSelected = new Set(selectedDocs);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedDocs(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedDocs.size} documents?`)) return;
+
+    try {
+      await Promise.all(Array.from(selectedDocs).map(id => documentAPI.delete(id)));
+      setSelectedDocs(new Set());
+      await loadDocuments();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      alert('Failed to delete documents');
+    }
+  };
+
+  const filteredDocuments = documents
+    .filter(doc => {
+      const matchesSearch = doc.filename.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'all' || doc.document_type === filterType;
+      return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
+
+      if (sortField === 'created_at') {
+        aValue = new Date(aValue).getTime();
+        bValue = new Date(bValue).getTime();
+      } else if (sortField === 'file_size') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      } else {
+        aValue = String(aValue).toLowerCase();
+        bValue = String(bValue).toLowerCase();
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   return (
     <div className="space-y-6">
@@ -191,8 +287,8 @@ export default function DocumentsPage() {
         </Card>
       )}
 
-      {/* Search */}
-      <div className="flex items-center gap-2">
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -202,15 +298,36 @@ export default function DocumentsPage() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" size="icon">
-          <Filter className="h-4 w-4" />
-        </Button>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="contract">Contracts</SelectItem>
+            <SelectItem value="policy">Policies</SelectItem>
+            <SelectItem value="report">Reports</SelectItem>
+            <SelectItem value="agreement">Agreements</SelectItem>
+          </SelectContent>
+        </Select>
+        {selectedDocs.size > 0 && (
+          <Button variant="destructive" onClick={handleBulkDelete}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete ({selectedDocs.size})
+          </Button>
+        )}
       </div>
 
-      {/* Documents List */}
+      {/* Documents Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Documents ({filteredDocuments.length})</CardTitle>
+          <CardDescription>
+            {selectedDocs.size > 0
+              ? `${selectedDocs.size} document${selectedDocs.size > 1 ? 's' : ''} selected`
+              : 'Manage and organize your documents'
+            }
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -218,52 +335,137 @@ export default function DocumentsPage() {
           ) : filteredDocuments.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No documents yet</h3>
+              <h3 className="text-lg font-medium mb-2">No documents found</h3>
               <p className="text-muted-foreground mb-4">
-                Upload your first document to get started
+                {searchTerm || filterType !== 'all'
+                  ? 'Try adjusting your search or filter criteria'
+                  : 'Upload your first document to get started'
+                }
               </p>
-              <Button onClick={() => setShowUpload(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Document
-              </Button>
+              {!searchTerm && filterType === 'all' && (
+                <Button onClick={() => setShowUpload(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Document
+                </Button>
+              )}
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <File className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">{doc.filename}</p>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={selectedDocs.size === filteredDocuments.length && filteredDocuments.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-3 h-8 data-[state=open]:bg-accent"
+                        onClick={() => handleSort('filename')}
+                      >
+                        Name
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-3 h-8 data-[state=open]:bg-accent"
+                        onClick={() => handleSort('document_type')}
+                      >
+                        Type
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-3 h-8 data-[state=open]:bg-accent"
+                        onClick={() => handleSort('file_size')}
+                      >
+                        Size
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-3 h-8 data-[state=open]:bg-accent"
+                        onClick={() => handleSort('created_at')}
+                      >
+                        Date
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredDocuments.map((doc) => (
+                    <TableRow key={doc.id} className={selectedDocs.has(doc.id) ? 'bg-muted/50' : ''}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedDocs.has(doc.id)}
+                          onCheckedChange={() => toggleSelectDoc(doc.id)}
+                          aria-label={`Select ${doc.filename}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded bg-primary/10">
+                            <File className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="truncate max-w-[300px]">{doc.filename}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge className={getTypeColor(doc.document_type)}>
                           {doc.document_type}
                         </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(doc.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                      </TableCell>
+                      <TableCell>{formatFileSize(doc.file_size)}</TableCell>
+                      <TableCell>{new Date(doc.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Download className="mr-2 h-4 w-4" />
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDelete(doc.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ import {
 import { agentAPI } from '@/lib/api';
 
 export default function AgentsPage() {
+  const router = useRouter();
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -94,36 +96,9 @@ export default function AgentsPage() {
     },
   ];
 
-  const customAgents = [
-    {
-      id: 'custom-1',
-      name: 'SaaS Contract Reviewer',
-      description: 'Specialized agent for reviewing SaaS subscription agreements',
-      icon: FileEdit,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
-      capabilities: ['SaaS-specific terms', 'Pricing structure analysis', 'SLA verification', 'Auto-renewal detection'],
-      model: 'GPT-4 Turbo',
-      lastRun: '3 days ago',
-      custom: true,
-    },
-    {
-      id: 'custom-2',
-      name: 'NDA Analyzer',
-      description: 'Fast analysis of non-disclosure agreements',
-      icon: Zap,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      borderColor: 'border-yellow-200',
-      capabilities: ['Confidentiality scope', 'Term duration', 'Exception clauses', 'Mutual vs unilateral'],
-      model: 'Claude 3 Haiku',
-      lastRun: '1 week ago',
-      custom: true,
-    },
-  ];
+  const customAgents: any[] = [];
 
-  const allAgents = [...builtInAgents, ...customAgents];
+  const allAgents = [...builtInAgents];
 
   return (
     <div className="space-y-6">
@@ -159,10 +134,26 @@ export default function AgentsPage() {
                     <agent.icon className={`h-6 w-6 ${agent.color}`} />
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="ghost">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push('/dashboard/analysis');
+                      }}
+                      title="Run this agent"
+                    >
                       <Play className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAgent(agent.id);
+                      }}
+                      title="Configure agent settings"
+                    >
                       <Settings className="h-4 w-4" />
                     </Button>
                   </div>
@@ -203,56 +194,73 @@ export default function AgentsPage() {
             {customAgents.length} custom agents
           </span>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {customAgents.map((agent) => (
-            <Card
-              key={agent.id}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedAgent === agent.id ? 'ring-2 ring-gray-400' : ''
-              }`}
-              onClick={() => setSelectedAgent(agent.id)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className={`p-3 rounded-lg ${agent.bgColor} border ${agent.borderColor}`}>
-                    <agent.icon className={`h-6 w-6 ${agent.color}`} />
+        {customAgents.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Zap className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Custom Agents Yet</h3>
+              <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+                Create custom AI agents tailored to your specific contract intelligence needs.
+                Custom agents can be specialized for industry-specific terms, company policies, or unique workflows.
+              </p>
+              <Button className="gap-2" onClick={() => setCreateModalOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Create Your First Agent
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {customAgents.map((agent) => (
+              <Card
+                key={agent.id}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  selectedAgent === agent.id ? 'ring-2 ring-gray-400' : ''
+                }`}
+                onClick={() => setSelectedAgent(agent.id)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className={`p-3 rounded-lg ${agent.bgColor} border ${agent.borderColor}`}>
+                      <agent.icon className={`h-6 w-6 ${agent.color}`} />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost">
+                        <Play className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost">
-                      <Play className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <CardTitle className="mt-4 flex items-center gap-2">
+                    {agent.name}
+                    <Badge variant="outline" className="text-xs">Custom</Badge>
+                  </CardTitle>
+                  <CardDescription>{agent.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {agent.capabilities.slice(0, 3).map((cap: string, idx: number) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {cap}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Model: {agent.model}</span>
+                      <span>Last run: {agent.lastRun}</span>
+                    </div>
                   </div>
-                </div>
-                <CardTitle className="mt-4 flex items-center gap-2">
-                  {agent.name}
-                  <Badge variant="outline" className="text-xs">Custom</Badge>
-                </CardTitle>
-                <CardDescription>{agent.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {agent.capabilities.slice(0, 3).map((cap, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {cap}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Model: {agent.model}</span>
-                    <span>Last run: {agent.lastRun}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Agent Configuration Panel */}

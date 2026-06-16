@@ -81,88 +81,120 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* LLM Provider Selection */}
+      {/* LLM Provider & Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle>LLM Provider</CardTitle>
+          <CardTitle>LLM Provider Configuration</CardTitle>
           <CardDescription>
-            Choose your preferred large language model provider for contract analysis
+            Choose your preferred AI provider and configure API credentials
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {providers.map((provider) => (
-            <div
-              key={provider.id}
-              className={`flex items-start justify-between rounded-lg border-2 p-4 cursor-pointer transition-all ${
-                selectedProvider === provider.id
-                  ? 'border-gray-400 bg-gray-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setSelectedProvider(provider.id)}
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">{provider.name}</h3>
-                  {provider.recommended && (
-                    <Badge variant="default">Recommended</Badge>
-                  )}
-                  {selectedProvider === provider.id && (
-                    <Check className="h-5 w-5 text-gray-700" />
-                  )}
+        <CardContent className="space-y-6">
+          {/* Provider Selection */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium">
+              Select LLM Provider
+            </label>
+            <div className="grid gap-3">
+              {providers.map((provider) => (
+                <div
+                  key={provider.id}
+                  className={`flex items-center justify-between rounded-lg border-2 p-4 cursor-pointer transition-all ${
+                    selectedProvider === provider.id
+                      ? 'border-gray-900 bg-gray-50 shadow-sm'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setSelectedProvider(provider.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      selectedProvider === provider.id
+                        ? 'border-gray-900 bg-gray-900'
+                        : 'border-gray-300'
+                    }`}>
+                      {selectedProvider === provider.id && (
+                        <div className="w-2 h-2 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{provider.name}</h3>
+                        {provider.recommended && (
+                          <Badge variant="default" className="text-xs">Recommended</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {provider.description}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {provider.description}
-                </p>
-                <div className="mt-2">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Model:
-                  </label>
-                  <select
-                    className="ml-2 text-sm border rounded px-2 py-1"
-                    value={models[provider.id as keyof typeof models]}
-                    onChange={(e) =>
-                      setModels({ ...models, [provider.id]: e.target.value })
-                    }
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {provider.models.map((model) => (
-                      <option key={model} value={model}>
-                        {model}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          </div>
 
-      {/* API Key Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>API Keys</CardTitle>
-          <CardDescription>
-            Securely store your API keys for LLM providers
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {providers.map((provider) => (
-            <div key={provider.id}>
-              <label className="block text-sm font-medium mb-2">
-                {provider.name} API Key
-              </label>
-              <input
-                type="password"
-                placeholder={`Enter your ${provider.name} API key`}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={apiKeys[provider.id as keyof typeof apiKeys]}
-                onChange={(e) =>
-                  setApiKeys({ ...apiKeys, [provider.id]: e.target.value })
-                }
-              />
+          {/* Selected Provider Configuration */}
+          {selectedProvider && (
+            <div className="space-y-4 pt-4 border-t">
+              {(() => {
+                const provider = providers.find(p => p.id === selectedProvider);
+                if (!provider) return null;
+
+                return (
+                  <>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Check className="h-5 w-5 text-green-600" />
+                      <span className="font-medium">Configuring {provider.name}</span>
+                    </div>
+
+                    {/* API Key Input */}
+                    <div className="space-y-2">
+                      <Label htmlFor="api-key" className="text-sm font-medium">
+                        {provider.name} API Key
+                      </Label>
+                      <Input
+                        id="api-key"
+                        type="password"
+                        placeholder={`Enter your ${provider.name} API key`}
+                        value={apiKeys[provider.id as keyof typeof apiKeys]}
+                        onChange={(e) =>
+                          setApiKeys({ ...apiKeys, [provider.id]: e.target.value })
+                        }
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Your API key is encrypted and stored securely
+                      </p>
+                    </div>
+
+                    {/* Model Selection */}
+                    <div className="space-y-2">
+                      <Label htmlFor="model-select" className="text-sm font-medium">
+                        Select Model
+                      </Label>
+                      <select
+                        id="model-select"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                        value={models[provider.id as keyof typeof models]}
+                        onChange={(e) =>
+                          setModels({ ...models, [provider.id]: e.target.value })
+                        }
+                      >
+                        {provider.models.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        Choose the AI model for contract analysis
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
-          ))}
+          )}
         </CardContent>
       </Card>
 

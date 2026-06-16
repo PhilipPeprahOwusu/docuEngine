@@ -54,38 +54,22 @@ async function proxyRequest(
     const searchParams = request.nextUrl.searchParams.toString();
     const targetUrl = searchParams ? `${url}?${searchParams}` : url;
 
-    // Get request headers
+    // Copy all headers except host and content-length
     const headers: Record<string, string> = {};
     request.headers.forEach((value, key) => {
-      // Skip host header to avoid conflicts
-      if (key.toLowerCase() !== 'host') {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey !== 'host' && lowerKey !== 'content-length') {
         headers[key] = value;
       }
     });
 
-    // Get request body if present
-    let body: any = undefined;
-    const contentType = request.headers.get('content-type');
+    // Get request body - pass through as raw blob for multipart
+    let body: BodyInit | undefined = undefined;
 
     if (method !== 'GET' && method !== 'HEAD') {
-      if (contentType?.includes('application/json')) {
-        try {
-          body = await request.json();
-          body = JSON.stringify(body);
-        } catch {
-          // Not JSON or empty body
-        }
-      } else if (contentType?.includes('application/x-www-form-urlencoded')) {
-        body = await request.text();
-      } else if (contentType?.includes('multipart/form-data')) {
-        body = await request.formData();
-      } else {
-        try {
-          body = await request.text();
-        } catch {
-          // Empty body
-        }
-      }
+      // For all request types, get the raw body as a blob
+      // This preserves multipart boundaries and all data
+      body = await request.blob();
     }
 
     // Make request to backend

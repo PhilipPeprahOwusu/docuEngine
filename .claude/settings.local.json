@@ -39,7 +39,21 @@
       "Bash(gcloud auth configure-docker:*)",
       "Bash(docker tag:*)",
       "Bash(docker buildx build:*)",
-      "Bash(python -m alembic revision:*)"
+      "Bash(python -m alembic revision:*)",
+      "Bash(gcloud storage buckets create:*)",
+      "Bash(gcloud iam service-accounts create:*)",
+      "Bash(gcloud storage buckets add-iam-policy-binding:*)",
+      "Bash(gcloud container clusters describe:*)",
+      "Bash(kubectl create:*)",
+      "Bash(kubectl annotate:*)",
+      "Bash(gcloud iam service-accounts add-iam-policy-binding:*)",
+      "Bash(kubectl patch:*)",
+      "Bash(gcloud projects add-iam-policy-binding:*)",
+      "Bash(gcloud storage ls:*)",
+      "Bash(gcloud storage rm:*)",
+      "Bash(kubectl set image:*)",
+      "Bash(gcloud container images describe:*)",
+      "WebFetch(domain:www.shadcnblocks.com)"
     ],
     "deny": [],
     "ask": []

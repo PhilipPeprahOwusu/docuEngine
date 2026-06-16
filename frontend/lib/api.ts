@@ -10,9 +10,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_USE_PROXY === 'true'
 // Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Don't set default Content-Type - let axios auto-detect based on request body
 });
 
 // Request interceptor to add auth token

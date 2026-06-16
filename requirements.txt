@@ -30,8 +30,9 @@ anthropic==0.45.0
 # Vector Database
 qdrant-client==1.12.1
 
-# AWS SDK
-boto3==1.35.80
+# Cloud Storage
+boto3==1.35.80  # AWS S3
+google-cloud-storage==2.14.0  # GCP Cloud Storage
 
 # Notifications
 slack-sdk==3.33.4

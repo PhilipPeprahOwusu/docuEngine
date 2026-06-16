@@ -1,6 +1,7 @@
 """AI Agent Routes"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from app.db.session import get_db
 from app.models.user import User
 from app.models.document import Document
@@ -11,6 +12,15 @@ from app.agents.qa_agent import QAAgent
 from app.agents.comparison_agent import ComparisonAgent
 
 router = APIRouter()
+
+
+class CompareRequest(BaseModel):
+    document_a_id: str
+    document_b_id: str
+
+
+class QARequest(BaseModel):
+    question: str
 
 
 async def get_current_user_from_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
@@ -93,20 +103,19 @@ async def assess_risk(
 
 @router.post("/compare")
 async def compare_documents(
-    document_a_id: str,
-    document_b_id: str,
+    request: CompareRequest,
     current_user: User = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     """Compare two documents using AI"""
     # Verify both documents belong to user's org
     doc_a = db.query(Document).filter(
-        Document.document_id == document_a_id,
+        Document.document_id == request.document_a_id,
         Document.org_id == current_user.org_id
     ).first()
 
     doc_b = db.query(Document).filter(
-        Document.document_id == document_b_id,
+        Document.document_id == request.document_b_id,
         Document.org_id == current_user.org_id
     ).first()
 
@@ -119,13 +128,13 @@ async def compare_documents(
         llm = get_llm()
         agent = ComparisonAgent(llm=llm, db_session=db)
         result = agent.invoke({
-            "document_a_id": document_a_id,
-            "document_b_id": document_b_id
+            "document_a_id": request.document_a_id,
+            "document_b_id": request.document_b_id
         })
 
         return {
-            "document_a": {"id": document_a_id, "filename": doc_a.filename},
-            "document_b": {"id": document_b_id, "filename": doc_b.filename},
+            "document_a": {"id": request.document_a_id, "filename": doc_a.filename},
+            "document_b": {"id": request.document_b_id, "filename": doc_b.filename},
             "comparison": result.get("comparison", {})
         }
     except Exception as e:
@@ -135,7 +144,7 @@ async def compare_documents(
 @router.post("/qa/{document_id}")
 async def ask_question(
     document_id: str,
-    question: str,
+    request: QARequest,
     current_user: User = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
@@ -156,13 +165,13 @@ async def ask_question(
         agent = QAAgent(llm=llm, db_session=db)
         result = agent.invoke({
             "document_id": document_id,
-            "question": question
+            "question": request.question
         })
 
         return {
             "document_id": document_id,
             "filename": document.filename,
-            "question": question,
+            "question": request.question,
             "answer": result.get("answer", "")
         }
     except Exception as e:
