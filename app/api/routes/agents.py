@@ -165,7 +165,7 @@ async def ask_question(
         agent = QAAgent(llm=llm, db_session=db)
         result = agent.invoke({
             "document_id": document_id,
-            "question": request.question
+            "query": request.question
         })
 
         return {

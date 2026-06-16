@@ -96,12 +96,12 @@ class QAAgent(BaseAgentGraph):
         self.create_node("load", load_document)
         self.create_node("search", search_document_sections)
         self.create_node("rerank", rerank_sources)
-        self.create_node("answer", generate_answer)
+        self.create_node("generate", generate_answer)
 
         self.workflow.add_edge("load", "search")
         self.workflow.add_edge("search", "rerank")
-        self.workflow.add_edge("rerank", "answer")
-        self.workflow.add_edge("answer", END)
+        self.workflow.add_edge("rerank", "generate")
+        self.workflow.add_edge("generate", END)
 
         # Compile
         self.app = self.compile()

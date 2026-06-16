@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   Table,
   TableBody,
@@ -46,7 +47,8 @@ import {
 import { documentAPI } from '@/lib/api';
 
 interface Document {
-  id: string;
+  id?: string;  // Frontend convenience field
+  document_id: string;  // Backend field
   filename: string;
   document_type: string;
   file_size: number;
@@ -62,8 +64,9 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [showUpload, setShowUpload] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [documentType, setDocumentType] = useState('contract');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -87,29 +90,42 @@ export default function DocumentsPage() {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    if (e.target.files) {
+      setSelectedFiles(Array.from(e.target.files));
     }
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (selectedFiles.length === 0) return;
 
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('document_type', documentType);
+    setUploadProgress(0);
 
-      await documentAPI.upload(formData);
+    try {
+      const totalFiles = selectedFiles.length;
+      let uploadedCount = 0;
+
+      // Upload files one by one (can be parallelized if backend supports it)
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('document_type', documentType);
+
+        await documentAPI.upload(formData);
+
+        uploadedCount++;
+        setUploadProgress(Math.round((uploadedCount / totalFiles) * 100));
+      }
 
       // Reset form
-      setSelectedFile(null);
+      setSelectedFiles([]);
       setShowUpload(false);
       setDocumentType('contract');
+      setUploadProgress(0);
 
       // Reload documents
       await loadDocuments();
+      alert(`Successfully uploaded ${totalFiles} document(s)!`);
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Failed to upload document');
@@ -146,6 +162,8 @@ export default function DocumentsPage() {
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
 
+  const getDocId = (doc: Document) => doc.id || doc.document_id;
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -159,7 +177,7 @@ export default function DocumentsPage() {
     if (selectedDocs.size === filteredDocuments.length) {
       setSelectedDocs(new Set());
     } else {
-      setSelectedDocs(new Set(filteredDocuments.map(doc => doc.id)));
+      setSelectedDocs(new Set(filteredDocuments.map(doc => getDocId(doc))));
     }
   };
 
@@ -237,20 +255,38 @@ export default function DocumentsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="file">Choose File</Label>
+              <Label htmlFor="file">Choose Files (Multiple supported)</Label>
               <Input
                 id="file"
                 type="file"
                 onChange={handleFileSelect}
                 accept=".txt,.pdf,.doc,.docx"
                 disabled={uploading}
+                multiple
               />
-              {selectedFile && (
-                <p className="text-sm text-muted-foreground">
-                  Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                </p>
+              {selectedFiles.length > 0 && (
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p className="font-medium">
+                    Selected {selectedFiles.length} file(s):
+                  </p>
+                  {selectedFiles.map((file, idx) => (
+                    <p key={idx} className="pl-2">
+                      • {file.name} ({formatFileSize(file.size)})
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
+
+            {uploading && uploadProgress > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Uploading files...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2" />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="document_type">Document Type</Label>
@@ -269,13 +305,16 @@ export default function DocumentsPage() {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleUpload} disabled={!selectedFile || uploading}>
+              <Button onClick={handleUpload} disabled={selectedFiles.length === 0 || uploading}>
                 {uploading ? (
-                  <>Uploading...</>
+                  <>
+                    <Upload className="mr-2 h-4 w-4 animate-pulse" />
+                    Uploading {uploadProgress}%
+                  </>
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    Upload
+                    Upload {selectedFiles.length > 0 && `(${selectedFiles.length})`}
                   </>
                 )}
               </Button>
@@ -409,12 +448,14 @@ export default function DocumentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDocuments.map((doc) => (
-                    <TableRow key={doc.id} className={selectedDocs.has(doc.id) ? 'bg-muted/50' : ''}>
+                  {filteredDocuments.map((doc) => {
+                    const docId = getDocId(doc);
+                    return (
+                    <TableRow key={docId} className={selectedDocs.has(docId) ? 'bg-muted/50' : ''}>
                       <TableCell>
                         <Checkbox
-                          checked={selectedDocs.has(doc.id)}
-                          onCheckedChange={() => toggleSelectDoc(doc.id)}
+                          checked={selectedDocs.has(docId)}
+                          onCheckedChange={() => toggleSelectDoc(docId)}
                           aria-label={`Select ${doc.filename}`}
                         />
                       </TableCell>
@@ -454,7 +495,7 @@ export default function DocumentsPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => handleDelete(doc.id)}
+                              onClick={() => handleDelete(docId)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
@@ -463,7 +504,8 @@ export default function DocumentsPage() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );
+                  })}
                 </TableBody>
               </Table>
             </div>
