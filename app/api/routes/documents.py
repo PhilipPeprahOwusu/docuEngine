@@ -36,7 +36,14 @@ async def upload_document(
     try:
         # Read file content
         content = await file.read()
-        content_str = content.decode('utf-8', errors='ignore')
+
+        # Try to decode as text, fallback to storing file info only
+        try:
+            content_str = content.decode('utf-8')
+        except UnicodeDecodeError:
+            # For binary files (PDF, DOCX), store placeholder
+            # In production, this would be uploaded to S3 and processed separately
+            content_str = f"[Binary file: {file.filename}]\nFile type: {file.content_type}\nSize: {len(content)} bytes\n\nNote: This is a placeholder for binary content. In production, the file would be stored in S3 and processed via document parsing service (PyPDF2/python-docx)."
 
         # Create document record
         new_document = Document(
@@ -48,7 +55,7 @@ async def upload_document(
             document_type=document_type,
             created_by=current_user.user_id,
             parties=[],
-            s3_key=None  # TODO: Upload to S3
+            s3_key=None  # TODO: Upload to S3 for binary files
         )
 
         db.add(new_document)
@@ -66,7 +73,7 @@ async def upload_document(
 
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Upload failed: {str(e)}")
 
 
 @router.get("/")
