@@ -1,7 +1,36 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(find:*)",
+      "Bash(chmod:*)",
+      "Bash(openssl rand:*)",
+      "Bash(kubectl get:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(docker build:*)",
+      "Bash(docker push:*)",
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl rollout:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl cp:*)",
+      "Bash(kubectl exec:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs:*)",
+      "Bash(vercel --yes:*)",
+      "Bash(vercel login)",
+      "Bash(vercel env add:*)",
+      "Bash(vercel:*)",
+      "Bash(kubectl wait:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(ngrok http:*)",
+      "Bash(npm run build:*)",
+      "Bash({} ;)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,79 @@
-# FastAPI Application
+# Document Intelligence Agent Platform
 
-A production-ready FastAPI application with best practices, including authentication, database integration, and comprehensive testing.
+**Enterprise-grade policy-governed document management powered by multi-agent AI workflows**
+
+> Transform document review from manual, error-prone processes to intelligent, policy-governed automation with full audit trails and supervisor approvals.
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com)
+[![LangGraph](https://img.shields.io/badge/LangGraph-0.0.20-orange.svg)](https://langchain-ai.github.io/langgraph/)
+[![Multi-LLM](https://img.shields.io/badge/LLM-OpenAI%20%7C%20Gemini%20%7C%20Anthropic-purple.svg)]()
+
+---
+
+## 🎯 What Is This?
+
+This platform demonstrates the intersection of three powerful domains:
+
+1. **Document Intelligence** (Evisort-style) - AI-powered document analysis, extraction, and risk assessment
+2. **Agent Orchestration** - Multi-agent workflows with LangGraph for complex, stateful operations
+3. **Enterprise Governance** (Workday-style) - Multi-tenancy, RBAC, policy compliance, and audit logging
+
+### Key Differentiators
+
+✅ **Custom Agent Factory** - Users create specialized agents without coding
+✅ **Policy-Based Evaluation** - Documents evaluated against company policies with full citations
+✅ **Human-in-the-Loop** - Supervisor approvals via Slack/Email/Discord
+✅ **Context Validation** - User insights validated against policies automatically
+✅ **Multi-Channel Notifications** - Interactive approval workflows
+✅ **Complete Audit Trail** - Every action logged, immutable, traceable
+✅ **Multi-LLM Support** - OpenAI, Google Gemini, and Anthropic Claude
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│         FastAPI Backend (Async)             │
+│  - Request routing                          │
+│  - RBAC enforcement                         │
+│  - Multi-tenancy                            │
+└───┬──────────┬────────────┬────────┬────────┘
+    │          │            │        │
+    ▼          ▼            ▼        ▼
+┌────────┐ ┌───────┐ ┌──────────┐ ┌──────────┐
+│Extract │ │Risk   │ │Comparison│ │Q&A       │
+│Agent   │ │Agent  │ │Agent     │ │Agent     │
+└───┬────┘ └───┬───┘ └────┬─────┘ └────┬─────┘
+    │          │           │            │
+    └──────────┴───────────┴────────────┘
+               │
+    ┌──────────▼──────────────┐
+    │ Policy Evaluation Engine│
+    │ - Full citation system  │
+    │ - Violation detection   │
+    │ - Compliance scoring    │
+    └──────────┬──────────────┘
+               │
+    ┌──────────▼──────────────┐
+    │ Human-in-the-Loop       │
+    │ - Context validation    │
+    │ - Approval workflows    │
+    │ - Multi-channel notify  │
+    └─────────────────────────┘
+               │
+    ┌──────────┴─────────┬────────────┐
+    │                    │            │
+┌───▼────┐ ┌──────▼─────┐ ┌────▼────┐
+│RDS     │ │ Qdrant     │ │ S3      │
+│Postgres│ │ (Vectors)  │ │ (Docs)  │
+└────────┘ └────────────┘ └─────────┘
+```
+
+---
+
+## 🚀 Complete Production-Ready FastAPI Application with LangGraph Multi-Agent System
 
 ## Features
 

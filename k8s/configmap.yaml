@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docuengine-config
+  namespace: docuengine
+data:
+  # Application
+  PROJECT_NAME: "Document Intelligence Agent Platform"
+  VERSION: "2.0.0"
+  ENVIRONMENT: "production"
+  DEBUG: "False"
+
+  # CORS - Allow frontend origins
+  ALLOWED_ORIGINS: '["http://localhost:3026", "https://frontend-eta-sepia-76.vercel.app", "https://*.vercel.app", "*"]'
+
+  # Database
+  POSTGRES_DB: "document_intelligence"
+  POSTGRES_USER: "docuser"
+
+  # Redis
+  REDIS_URL: "redis://redis-service:6379"
+
+  # Qdrant
+  QDRANT_URL: "http://qdrant-service:6333"
+
+  # AWS
+  AWS_REGION: "us-east-1"
+  S3_BUCKET: "document-intelligence-docs"
+
+  # Notifications
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"

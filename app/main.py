@@ -12,13 +12,30 @@ app = FastAPI(
 )
 
 # Set up CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Remove wildcard "*" from origins as it conflicts with allow_credentials
+allowed_origins = [origin for origin in settings.ALLOWED_ORIGINS if origin != "*"]
+
+# If in development or if wildcard is present, allow all origins
+if settings.DEBUG or "*" in settings.ALLOWED_ORIGINS:
+    # Allow all origins in development
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=".*",  # Allow all origins
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+else:
+    # Production: use specific origins only
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
 
 
 @app.on_event("startup")

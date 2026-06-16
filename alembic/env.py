@@ -12,7 +12,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.db.base_class import Base
 from app.core.config import settings
 # Import all models to ensure they're registered with SQLAlchemy
-from app.models import User, Item
+from app.models import (
+    Organization,
+    User,
+    Document,
+    CompanyPolicy,
+    PolicyViolation,
+    CustomContext,
+    PolicyException,
+    CustomAgent,
+    AuditLog,
+    NotificationPreference,
+    NotificationAudit,
+)
 
 # this is the Alembic Config object
 config = context.config

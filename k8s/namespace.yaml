@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docuengine
+  labels:
+    name: docuengine
+    environment: production

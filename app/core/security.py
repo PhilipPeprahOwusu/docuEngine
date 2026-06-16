@@ -49,8 +49,12 @@ def decode_access_token(token: str) -> Optional[TokenPayload]:
         return None
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+async def get_current_user(token: str = Depends(oauth2_scheme), db = None):
     """Get current authenticated user"""
+    from sqlalchemy.orm import Session
+    from app.db.session import get_db
+    from app.models.user import User
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -62,6 +66,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     if token_data is None or token_data.sub is None:
         raise credentials_exception
 
-    # TODO: Fetch user from database using token_data.sub
-    # For now, return a mock user
-    return {"id": token_data.sub, "username": "mock_user"}
+    # Import here to avoid circular dependency
+    if db is None:
+        # This shouldn't happen, but handle gracefully
+        raise credentials_exception
+
+    # Fetch user from database using token_data.sub (user_id)
+    user = db.query(User).filter(User.user_id == token_data.sub).first()
+
+    if user is None:
+        raise credentials_exception
+
+    return user

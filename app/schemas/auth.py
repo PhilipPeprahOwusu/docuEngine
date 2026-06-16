@@ -17,5 +17,5 @@ class TokenData(BaseModel):
 
 class TokenPayload(BaseModel):
     """Token payload schema"""
-    sub: Optional[int] = None
+    sub: Optional[str] = None  # Changed to str to support UUID
     exp: Optional[int] = None

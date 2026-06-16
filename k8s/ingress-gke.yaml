@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docuengine-ingress-gke
+  namespace: docuengine
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    kubernetes.io/ingress.allow-http: "true"
+spec:
+  tls:
+  - hosts:
+    - 136-116-180-162.nip.io
+    secretName: docuengine-tls
+  rules:
+  - host: 136-116-180-162.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: docuengine-service
+            port:
+              number: 80
