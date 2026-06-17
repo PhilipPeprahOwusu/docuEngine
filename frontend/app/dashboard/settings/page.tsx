@@ -1,21 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, Check, Send } from 'lucide-react';
+import { Save, Check, Send, Copy, Eye, EyeOff, Trash2, AlertTriangle, Key, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { notificationAPI } from '@/lib/api';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { notificationAPI, settingsAPI } from '@/lib/api';
+
+interface SavedAPIKey {
+  provider: string;
+  key_preview: string;
+  model_name: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export default function SettingsPage() {
   const [selectedProvider, setSelectedProvider] = useState('anthropic');
-  const [apiKeys, setApiKeys] = useState({
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({
     openai: '',
     anthropic: '',
     gemini: '',
   });
+  const [savedKeys, setSavedKeys] = useState<SavedAPIKey[]>([]);
   const [models, setModels] = useState({
     openai: 'gpt-4-turbo-preview',
     anthropic: 'claude-3-5-sonnet-20241022',
@@ -28,6 +56,24 @@ export default function SettingsPage() {
     weeklyReports: '',
   });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Modal states
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [newApiKey, setNewApiKey] = useState<{
+    provider: string;
+    api_key: string;
+    key_preview: string;
+    model_name: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
+
+  // Delete confirmation
+  const [deleteProvider, setDeleteProvider] = useState<string | null>(null);
+
+  // Regenerate confirmation
+  const [regenerateProvider, setRegenerateProvider] = useState<string | null>(null);
 
   const providers = [
     {
@@ -53,15 +99,109 @@ export default function SettingsPage() {
     },
   ];
 
-  const handleSave = async () => {
+  useEffect(() => {
+    loadSavedKeys();
+  }, []);
+
+  const loadSavedKeys = async () => {
     try {
-      // Save Slack webhooks if any are configured
+      const response = await settingsAPI.getAPIKeys();
+      setSavedKeys(response.data.api_keys);
+    } catch (error) {
+      console.error('Failed to load API keys:', error);
+    }
+  };
+
+  const getSavedKey = (provider: string): SavedAPIKey | undefined => {
+    return savedKeys.find(k => k.provider === provider);
+  };
+
+  const handleSaveAPIKey = async () => {
+    const provider = selectedProvider;
+    const apiKey = apiKeys[provider as keyof typeof apiKeys];
+    const modelName = models[provider as keyof typeof models];
+
+    if (!apiKey || apiKey.trim() === '') {
+      alert('Please enter an API key');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await settingsAPI.saveAPIKey(provider, apiKey, modelName);
+
+      // Show the full API key ONE TIME in modal
+      setNewApiKey({
+        provider: response.data.provider,
+        api_key: response.data.api_key,
+        key_preview: response.data.key_preview,
+        model_name: response.data.model_name,
+      });
+      setShowKeyModal(true);
+
+      // Clear the input
+      setApiKeys({ ...apiKeys, [provider]: '' });
+
+      // Reload saved keys to show the masked version
+      await loadSavedKeys();
+
+    } catch (error: any) {
+      console.error('Failed to save API key:', error);
+      alert(error.response?.data?.detail || 'Failed to save API key');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCopyKey = () => {
+    if (newApiKey) {
+      navigator.clipboard.writeText(newApiKey.api_key);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!copied) {
+      setConfirmExit(true);
+    } else {
+      setShowKeyModal(false);
+      setNewApiKey(null);
+    }
+  };
+
+  const forceCloseModal = () => {
+    setShowKeyModal(false);
+    setNewApiKey(null);
+    setConfirmExit(false);
+  };
+
+  const handleDeleteKey = async (provider: string) => {
+    try {
+      await settingsAPI.deleteAPIKey(provider);
+      await loadSavedKeys();
+      setDeleteProvider(null);
+    } catch (error) {
+      console.error('Failed to delete API key:', error);
+      alert('Failed to delete API key');
+    }
+  };
+
+  const handleRegenerateKey = (provider: string) => {
+    setSelectedProvider(provider);
+    setRegenerateProvider(provider);
+  };
+
+  const confirmRegenerate = () => {
+    setRegenerateProvider(null);
+    // The provider is already selected, user just needs to enter new key
+  };
+
+  const handleSlackSave = async () => {
+    try {
       if (Object.values(slackWebhooks).some(url => url.trim() !== '')) {
         await notificationAPI.saveSlackWebhooks(slackWebhooks);
       }
-
-      // TODO: Save LLM provider settings to backend
-      console.log('Saving settings:', { selectedProvider, apiKeys, models });
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -84,7 +224,10 @@ export default function SettingsPage() {
       {/* LLM Provider & Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle>LLM Provider Configuration</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            LLM Provider Configuration
+          </CardTitle>
           <CardDescription>
             Choose your preferred AI provider and configure API credentials
           </CardDescription>
@@ -96,40 +239,85 @@ export default function SettingsPage() {
               Select LLM Provider
             </label>
             <div className="grid gap-3">
-              {providers.map((provider) => (
-                <div
-                  key={provider.id}
-                  className={`flex items-center justify-between rounded-lg border-2 p-4 cursor-pointer transition-all ${
-                    selectedProvider === provider.id
-                      ? 'border-gray-900 bg-gray-50 shadow-sm'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setSelectedProvider(provider.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+              {providers.map((provider) => {
+                const savedKey = getSavedKey(provider.id);
+
+                return (
+                  <div
+                    key={provider.id}
+                    className={`flex items-center justify-between rounded-lg border-2 p-4 cursor-pointer transition-all ${
                       selectedProvider === provider.id
-                        ? 'border-gray-900 bg-gray-900'
-                        : 'border-gray-300'
-                    }`}>
-                      {selectedProvider === provider.id && (
-                        <div className="w-2 h-2 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{provider.name}</h3>
-                        {provider.recommended && (
-                          <Badge variant="default" className="text-xs">Recommended</Badge>
+                        ? 'border-gray-900 bg-gray-50 shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedProvider(provider.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        selectedProvider === provider.id
+                          ? 'border-gray-900 bg-gray-900'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedProvider === provider.id && (
+                          <div className="w-2 h-2 rounded-full bg-white" />
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {provider.description}
-                      </p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{provider.name}</h3>
+                          {provider.recommended && (
+                            <Badge variant="default" className="text-xs">Recommended</Badge>
+                          )}
+                          {savedKey && (
+                            <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                              <Check className="h-3 w-3 mr-1" />
+                              Configured
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {provider.description}
+                        </p>
+                        {savedKey && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground font-mono">
+                              API Key: {savedKey.key_preview}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              • Model: {savedKey.model_name}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    {savedKey && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRegenerateKey(provider.id);
+                          }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Regenerate
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteProvider(provider.id);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -140,12 +328,25 @@ export default function SettingsPage() {
                 const provider = providers.find(p => p.id === selectedProvider);
                 if (!provider) return null;
 
+                const savedKey = getSavedKey(provider.id);
+
                 return (
                   <>
                     <div className="flex items-center gap-2 mb-4">
                       <Check className="h-5 w-5 text-green-600" />
-                      <span className="font-medium">Configuring {provider.name}</span>
+                      <span className="font-medium">
+                        {savedKey ? `Update ${provider.name}` : `Configure ${provider.name}`}
+                      </span>
                     </div>
+
+                    {savedKey && (
+                      <Alert className="bg-blue-50 border-blue-200">
+                        <AlertTriangle className="h-4 w-4 text-blue-600" />
+                        <AlertDescription className="text-sm text-blue-800">
+                          You already have an API key configured. Entering a new key will replace the existing one.
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
                     {/* API Key Input */}
                     <div className="space-y-2">
@@ -163,7 +364,7 @@ export default function SettingsPage() {
                         className="font-mono text-sm"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Your API key is encrypted and stored securely
+                        Your API key is encrypted and stored securely. You'll only see it once after saving.
                       </p>
                     </div>
 
@@ -190,6 +391,25 @@ export default function SettingsPage() {
                         Choose the AI model for contract analysis
                       </p>
                     </div>
+
+                    {/* Save Button */}
+                    <Button
+                      onClick={handleSaveAPIKey}
+                      disabled={saving || !apiKeys[provider.id as keyof typeof apiKeys]?.trim()}
+                      className="w-full"
+                    >
+                      {saving ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          {savedKey ? 'Update API Key' : 'Save API Key'}
+                        </>
+                      )}
+                    </Button>
                   </>
                 );
               })()}
@@ -290,7 +510,7 @@ export default function SettingsPage() {
               onChange={(e) => setSlackWebhooks({ ...slackWebhooks, riskAlerts: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Sends alerts when contracts with risk score ≥ 7.0 are detected (#legal-alerts channel recommended)
+              Sends alerts when contracts with risk score ≥ 7.0 are detected
             </p>
           </div>
 
@@ -305,7 +525,7 @@ export default function SettingsPage() {
               onChange={(e) => setSlackWebhooks({ ...slackWebhooks, policyViolations: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Notifies when policy violations are detected (#compliance channel recommended)
+              Notifies when policy violations are detected
             </p>
           </div>
 
@@ -320,7 +540,7 @@ export default function SettingsPage() {
               onChange={(e) => setSlackWebhooks({ ...slackWebhooks, contractIntake: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Notifies team when new contracts are uploaded (#contract-intake channel recommended)
+              Notifies team when new contracts are uploaded
             </p>
           </div>
 
@@ -335,40 +555,157 @@ export default function SettingsPage() {
               onChange={(e) => setSlackWebhooks({ ...slackWebhooks, weeklyReports: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              Sends weekly contract intelligence summary (#executive-summary channel recommended)
+              Sends weekly contract intelligence summary
             </p>
           </div>
 
-          {/* Setup Instructions */}
-          <div className="rounded-lg bg-slate-100 p-4 text-sm">
-            <p className="font-semibold mb-2">How to get Slack webhook URLs:</p>
-            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-              <li>Go to your Slack workspace settings</li>
-              <li>Navigate to Apps → Incoming Webhooks</li>
-              <li>Click "Add to Slack" and select a channel</li>
-              <li>Copy the webhook URL and paste it above</li>
-              <li>Repeat for each notification type you want to enable</li>
-            </ol>
+          <div className="flex justify-end">
+            <Button onClick={handleSlackSave} variant="outline" className="gap-2">
+              {saved ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Slack Settings
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} className="gap-2">
-          {saved ? (
-            <>
-              <Check className="h-4 w-4" />
-              Saved!
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Save Settings
-            </>
+      {/* Show Once Modal */}
+      <Dialog open={showKeyModal} onOpenChange={() => handleCloseModal()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              Save Your API Key
+            </DialogTitle>
+            <DialogDescription>
+              This is the <strong>only time</strong> you'll see this API key. Make sure to copy it now!
+            </DialogDescription>
+          </DialogHeader>
+
+          {newApiKey && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Provider</Label>
+                <div className="text-sm font-medium capitalize">{newApiKey.provider}</div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>API Key</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newApiKey.api_key}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleCopyKey}
+                    variant={copied ? "default" : "outline"}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <Alert className="bg-orange-50 border-orange-200">
+                <AlertTriangle className="h-4 w-4 text-orange-600" />
+                <AlertDescription className="text-sm text-orange-800">
+                  After closing this dialog, the key will be masked and cannot be retrieved again.
+                  You'll need to regenerate it if you lose it.
+                </AlertDescription>
+              </Alert>
+            </div>
           )}
-        </Button>
-      </div>
+
+          <DialogFooter>
+            <Button
+              onClick={forceCloseModal}
+              disabled={!copied}
+              className="w-full"
+            >
+              {copied ? "I've Saved My Key" : 'Copy Key First'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Exit Dialog */}
+      <AlertDialog open={confirmExit} onOpenChange={setConfirmExit}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You haven't copied your API key yet. If you close this dialog without copying,
+              you won't be able to see the full key again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={forceCloseModal}>
+              Close Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteProvider !== null} onOpenChange={() => setDeleteProvider(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete API Key?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the {deleteProvider?.toUpperCase()} API key.
+              You'll need to enter a new one to use this provider.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteProvider && handleDeleteKey(deleteProvider)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Delete Key
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Regenerate Confirmation */}
+      <AlertDialog open={regenerateProvider !== null} onOpenChange={() => setRegenerateProvider(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate API Key?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace your existing {regenerateProvider?.toUpperCase()} API key with a new one.
+              Enter the new key below to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRegenerate}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

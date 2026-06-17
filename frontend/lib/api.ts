@@ -162,3 +162,18 @@ export const approvalsAPI = {
   getFinalizedPDF: (documentId: string) =>
     api.get(`/api/v1/approvals/documents/${documentId}/pdf`),
 };
+
+// Settings API
+export const settingsAPI = {
+  saveAPIKey: (provider: string, apiKey: string, modelName: string) =>
+    api.post('/api/v1/settings/api-keys', {
+      provider,
+      api_key: apiKey,
+      model_name: modelName,
+    }),
+
+  getAPIKeys: () => api.get('/api/v1/settings/api-keys'),
+
+  deleteAPIKey: (provider: string) =>
+    api.delete(`/api/v1/settings/api-keys/${provider}`),
+};
