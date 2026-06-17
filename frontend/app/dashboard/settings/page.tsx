@@ -46,7 +46,7 @@ export default function SettingsPage() {
   const [savedKeys, setSavedKeys] = useState<SavedAPIKey[]>([]);
   const [models, setModels] = useState({
     openai: 'gpt-4o',
-    anthropic: 'claude-3-5-sonnet-20240620',
+    anthropic: 'claude-sonnet-4-6',
     gemini: 'gemini-1.5-pro',
   });
   const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});

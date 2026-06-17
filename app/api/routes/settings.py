@@ -23,10 +23,16 @@ VALID_MODELS: Dict[str, List[str]] = {
         "gpt-3.5-turbo"
     ],
     "anthropic": [
-        "claude-3-5-sonnet-20241022",  # Latest Claude 3.5 Sonnet (Oct 2024)
+        # Claude 4/5 models (2025+ naming convention)
+        "claude-fable-5",              # Claude Fable 5 (June 2026) - Most capable
+        "claude-opus-4-8",             # Claude Opus 4.8
+        "claude-sonnet-4-6",           # Claude Sonnet 4.6
+        "claude-haiku-4-5",            # Claude Haiku 4.5
+        # Legacy Claude 3 models (2024 - deprecated but may still work)
+        "claude-3-5-sonnet-20241022",  # Claude 3.5 Sonnet (Oct 2024)
         "claude-3-5-sonnet-20240620",  # Claude 3.5 Sonnet (June 2024)
         "claude-3-5-haiku-20241022",   # Claude 3.5 Haiku (Oct 2024)
-        "claude-3-opus-20240229",      # Claude 3 Opus (Feb 2024) - May require higher tier
+        "claude-3-opus-20240229",      # Claude 3 Opus (Feb 2024)
         "claude-3-sonnet-20240229",    # Claude 3 Sonnet (Feb 2024)
         "claude-3-haiku-20240307"      # Claude 3 Haiku (March 2024)
     ],
@@ -221,11 +227,14 @@ async def list_available_models(
             # Anthropic doesn't have a models list API, so we test common models
             from langchain_anthropic import ChatAnthropic
 
-            # Models to test (ordered by release date, newest first)
+            # Models to test (2025+ naming convention - newest first)
             models_to_test = [
+                "claude-fable-5",        # Newest model (June 2026)
+                "claude-opus-4-8",       # Opus 4.8
+                "claude-sonnet-4-6",     # Sonnet 4.6
+                "claude-haiku-4-5",      # Haiku 4.5
+                # Legacy Claude 3 models (2024 - deprecated but may still work for some users)
                 "claude-3-5-sonnet-20241022",
-                "claude-3-5-haiku-20241022",
-                "claude-3-5-sonnet-20240620",
                 "claude-3-opus-20240229",
                 "claude-3-sonnet-20240229",
                 "claude-3-haiku-20240307"

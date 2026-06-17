@@ -60,7 +60,9 @@
       "Bash(pip3 install:*)",
       "Bash(/Users/philipowusu/Development/docuengine/test_backend.sh)",
       "Bash(/Users/philipowusu/Development/docuengine/simple_test.sh)",
-      "Bash(/Users/philipowusu/Development/docuengine/test_list_models_endpoint.sh)"
+      "Bash(/Users/philipowusu/Development/docuengine/test_list_models_endpoint.sh)",
+      "WebSearch",
+      "WebFetch(domain:platform.claude.com)"
     ],
     "deny": [],
     "ask": []
