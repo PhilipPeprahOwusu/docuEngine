@@ -165,6 +165,22 @@ export const approvalsAPI = {
 
 // Settings API
 export const settingsAPI = {
+  getModels: () => api.get('/api/v1/settings/models'),
+
+  listAvailableModels: (provider: string, apiKey: string, modelName: string) =>
+    api.post('/api/v1/settings/api-keys/list-models', {
+      provider,
+      api_key: apiKey,
+      model_name: modelName,
+    }),
+
+  testAPIKey: (provider: string, apiKey: string, modelName: string) =>
+    api.post('/api/v1/settings/api-keys/test', {
+      provider,
+      api_key: apiKey,
+      model_name: modelName,
+    }),
+
   saveAPIKey: (provider: string, apiKey: string, modelName: string) =>
     api.post('/api/v1/settings/api-keys', {
       provider,

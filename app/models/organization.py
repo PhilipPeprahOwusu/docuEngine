@@ -22,3 +22,4 @@ class Organization(Base):
     company_policies = relationship("CompanyPolicy", back_populates="organization")
     custom_agents = relationship("CustomAgent", back_populates="organization")
     audit_logs = relationship("AuditLog", back_populates="organization")
+    api_keys = relationship("APIKey", back_populates="organization")

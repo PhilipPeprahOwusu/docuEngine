@@ -53,9 +53,9 @@ async def extract_information(
         raise HTTPException(status_code=404, detail="Document not found")
 
     try:
-        # Initialize and run extract agent
+        # Initialize and run extract agent with org-specific API keys
         from app.core.llm import get_llm
-        llm = get_llm()
+        llm = get_llm(db=db, org_id=str(current_user.org_id))
         agent = ExtractAgent(llm=llm, db_session=db)
         result = agent.invoke({"document_id": document_id})
 
@@ -85,9 +85,9 @@ async def assess_risk(
         raise HTTPException(status_code=404, detail="Document not found")
 
     try:
-        # Initialize and run risk agent
+        # Initialize and run risk agent with org-specific API keys
         from app.core.llm import get_llm
-        llm = get_llm()
+        llm = get_llm(db=db, org_id=str(current_user.org_id))
         agent = RiskAgent(llm=llm, db_session=db)
         result = agent.invoke({"document_id": document_id})
 
@@ -123,9 +123,9 @@ async def compare_documents(
         raise HTTPException(status_code=404, detail="One or both documents not found")
 
     try:
-        # Initialize and run comparison agent
+        # Initialize and run comparison agent with org-specific API keys
         from app.core.llm import get_llm
-        llm = get_llm()
+        llm = get_llm(db=db, org_id=str(current_user.org_id))
         agent = ComparisonAgent(llm=llm, db_session=db)
         result = agent.invoke({
             "document_a_id": request.document_a_id,
@@ -135,7 +135,12 @@ async def compare_documents(
         return {
             "document_a": {"id": request.document_a_id, "filename": doc_a.filename},
             "document_b": {"id": request.document_b_id, "filename": doc_b.filename},
-            "comparison": result.get("comparison", {})
+            "comparison": {
+                "differences": result.get("differences", {}),
+                "new_in_b": result.get("new_in_b", []),
+                "missing_in_b": result.get("missing_in_b", []),
+                "recommendations": result.get("recommendations", "")
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Comparison failed: {str(e)}")
@@ -159,9 +164,9 @@ async def ask_question(
         raise HTTPException(status_code=404, detail="Document not found")
 
     try:
-        # Initialize and run QA agent
+        # Initialize and run QA agent with org-specific API keys
         from app.core.llm import get_llm
-        llm = get_llm()
+        llm = get_llm(db=db, org_id=str(current_user.org_id))
         agent = QAAgent(llm=llm, db_session=db)
         result = agent.invoke({
             "document_id": document_id,

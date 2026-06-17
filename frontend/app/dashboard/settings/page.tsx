@@ -45,10 +45,14 @@ export default function SettingsPage() {
   });
   const [savedKeys, setSavedKeys] = useState<SavedAPIKey[]>([]);
   const [models, setModels] = useState({
-    openai: 'gpt-4-turbo-preview',
-    anthropic: 'claude-3-5-sonnet-20241022',
-    gemini: 'gemini-pro',
+    openai: 'gpt-4o',
+    anthropic: 'claude-3-5-sonnet-20240620',
+    gemini: 'gemini-1.5-pro',
   });
+  const [availableModels, setAvailableModels] = useState<Record<string, string[]>>({});
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{provider: string; success: boolean; message: string} | null>(null);
   const [slackWebhooks, setSlackWebhooks] = useState({
     riskAlerts: '',
     policyViolations: '',
@@ -80,28 +84,35 @@ export default function SettingsPage() {
       id: 'openai',
       name: 'OpenAI',
       description: 'GPT-4, GPT-3.5 models for contract analysis',
-      models: ['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo'],
       recommended: false,
     },
     {
       id: 'anthropic',
       name: 'Anthropic',
       description: 'Claude models optimized for legal document understanding',
-      models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229'],
       recommended: true,
     },
     {
       id: 'gemini',
       name: 'Google Gemini',
       description: 'Gemini Pro for multi-modal contract analysis',
-      models: ['gemini-pro', 'gemini-pro-vision'],
       recommended: false,
     },
   ];
 
   useEffect(() => {
     loadSavedKeys();
+    // Don't load hardcoded models - only show models after dynamic fetch with API key
   }, []);
+
+  const loadAvailableModels = async () => {
+    try {
+      const response = await settingsAPI.getModels();
+      setAvailableModels(response.data.models);
+    } catch (error) {
+      console.error('Failed to load available models:', error);
+    }
+  };
 
   const loadSavedKeys = async () => {
     try {
@@ -109,6 +120,109 @@ export default function SettingsPage() {
       setSavedKeys(response.data.api_keys);
     } catch (error) {
       console.error('Failed to load API keys:', error);
+    }
+  };
+
+  const handleFetchModels = async () => {
+    const provider = selectedProvider;
+    const apiKey = apiKeys[provider as keyof typeof apiKeys];
+    const modelName = models[provider as keyof typeof models];
+
+    if (!apiKey || apiKey.trim() === '') {
+      setTestResult({
+        provider,
+        success: false,
+        message: 'Please enter an API key first'
+      });
+      return;
+    }
+
+    setFetchingModels(true);
+    setTestResult(null);
+
+    try {
+      const response = await settingsAPI.listAvailableModels(provider, apiKey, modelName);
+
+      if (response.data.success && response.data.models.length > 0) {
+        // Update available models for this provider
+        setAvailableModels({
+          ...availableModels,
+          [provider]: response.data.models
+        });
+
+        // Set the first model as default
+        setModels({
+          ...models,
+          [provider]: response.data.models[0]
+        });
+
+        setTestResult({
+          provider,
+          success: true,
+          message: `Found ${response.data.models.length} available model(s) for your API key`
+        });
+      } else {
+        // Clear available models for this provider when none are accessible
+        setAvailableModels({
+          ...availableModels,
+          [provider]: []
+        });
+
+        setTestResult({
+          provider,
+          success: false,
+          message: response.data.message || 'No models found for this API key'
+        });
+      }
+    } catch (error: any) {
+      // Clear available models on error
+      setAvailableModels({
+        ...availableModels,
+        [provider]: []
+      });
+
+      setTestResult({
+        provider,
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch models'
+      });
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    const provider = selectedProvider;
+    const apiKey = apiKeys[provider as keyof typeof apiKeys];
+    const modelName = models[provider as keyof typeof models];
+
+    if (!apiKey || apiKey.trim() === '') {
+      setTestResult({
+        provider,
+        success: false,
+        message: 'Please enter an API key first'
+      });
+      return;
+    }
+
+    setTesting(true);
+    setTestResult(null);
+
+    try {
+      const response = await settingsAPI.testAPIKey(provider, apiKey, modelName);
+      setTestResult({
+        provider,
+        success: response.data.success,
+        message: response.data.message
+      });
+    } catch (error: any) {
+      setTestResult({
+        provider,
+        success: false,
+        message: error.response?.data?.message || 'Connection test failed'
+      });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -368,48 +482,108 @@ export default function SettingsPage() {
                       </p>
                     </div>
 
-                    {/* Model Selection */}
+                    {/* Fetch Available Models Button */}
                     <div className="space-y-2">
-                      <Label htmlFor="model-select" className="text-sm font-medium">
-                        Select Model
-                      </Label>
-                      <select
-                        id="model-select"
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-                        value={models[provider.id as keyof typeof models]}
-                        onChange={(e) =>
-                          setModels({ ...models, [provider.id]: e.target.value })
-                        }
+                      <Button
+                        onClick={handleFetchModels}
+                        disabled={fetchingModels || !apiKeys[provider.id as keyof typeof apiKeys]?.trim()}
+                        variant="outline"
+                        className="w-full"
+                        type="button"
                       >
-                        {provider.models.map((model) => (
-                          <option key={model} value={model}>
-                            {model}
-                          </option>
-                        ))}
-                      </select>
+                        {fetchingModels ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Fetching Available Models...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Fetch Available Models
+                          </>
+                        )}
+                      </Button>
                       <p className="text-xs text-muted-foreground">
-                        Choose the AI model for contract analysis
+                        Detect which models your API key has access to
                       </p>
                     </div>
 
-                    {/* Save Button */}
-                    <Button
-                      onClick={handleSaveAPIKey}
-                      disabled={saving || !apiKeys[provider.id as keyof typeof apiKeys]?.trim()}
-                      className="w-full"
-                    >
-                      {saving ? (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          {savedKey ? 'Update API Key' : 'Save API Key'}
-                        </>
-                      )}
-                    </Button>
+                    {/* Model Selection */}
+                    {availableModels[provider.id] && availableModels[provider.id].length > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="model-select" className="text-sm font-medium">
+                          Select Model
+                        </Label>
+                        <select
+                          id="model-select"
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                          value={models[provider.id as keyof typeof models]}
+                          onChange={(e) =>
+                            setModels({ ...models, [provider.id]: e.target.value })
+                          }
+                        >
+                          {availableModels[provider.id].map((model) => (
+                            <option key={model} value={model}>
+                              {model}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                          {availableModels[provider.id].length} model(s) available with your API key
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Test Connection */}
+                    {testResult && testResult.provider === provider.id && (
+                      <Alert variant={testResult.success ? "default" : "destructive"} className="text-sm">
+                        <AlertDescription>
+                          {testResult.success ? '✓ ' : '✗ '}
+                          {testResult.message}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Action Buttons - Only show when models are fetched */}
+                    {availableModels[provider.id] && availableModels[provider.id].length > 0 && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleTestConnection}
+                          disabled={testing || !apiKeys[provider.id as keyof typeof apiKeys]?.trim()}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          {testing ? (
+                            <>
+                              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                              Testing...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              Test Model
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={handleSaveAPIKey}
+                          disabled={saving || !apiKeys[provider.id as keyof typeof apiKeys]?.trim()}
+                          className="flex-1"
+                        >
+                          {saving ? (
+                            <>
+                              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              {savedKey ? 'Update' : 'Save'}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </>
                 );
               })()}

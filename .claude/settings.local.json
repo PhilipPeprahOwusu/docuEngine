@@ -53,7 +53,14 @@
       "Bash(gcloud storage rm:*)",
       "Bash(kubectl set image:*)",
       "Bash(gcloud container images describe:*)",
-      "WebFetch(domain:www.shadcnblocks.com)"
+      "WebFetch(domain:www.shadcnblocks.com)",
+      "Bash(git log:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git rm:*)",
+      "Bash(pip3 install:*)",
+      "Bash(/Users/philipowusu/Development/docuengine/test_backend.sh)",
+      "Bash(/Users/philipowusu/Development/docuengine/simple_test.sh)",
+      "Bash(/Users/philipowusu/Development/docuengine/test_list_models_endpoint.sh)"
     ],
     "deny": [],
     "ask": []

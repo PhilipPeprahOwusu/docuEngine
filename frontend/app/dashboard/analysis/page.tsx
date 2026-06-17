@@ -140,27 +140,60 @@ export default function AnalysisPage() {
             </div>
 
             {/* Display extracted data as structured cards */}
-            {results.extraction && typeof results.extraction === 'object' ? (
+            {results.extraction && typeof results.extraction === 'object' && Object.keys(results.extraction).length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                {Object.entries(results.extraction).map(([key, value]) => (
-                  <Card key={key}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-muted-foreground capitalize">
-                        {key.replace(/_/g, ' ')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-base font-semibold">
-                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+                {Object.entries(results.extraction).map(([key, value]) => {
+                  // Skip empty arrays and objects
+                  const isEmpty =
+                    (Array.isArray(value) && value.length === 0) ||
+                    (typeof value === 'object' && value !== null && Object.keys(value).length === 0);
+
+                  if (isEmpty) return null;
+
+                  return (
+                    <Card key={key}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-base font-semibold whitespace-pre-wrap">
+                          {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
-              <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">
-                {JSON.stringify(results.extraction, null, 2)}
-              </pre>
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <p className="font-medium text-yellow-800">No Data Extracted</p>
+                    <p className="text-sm text-yellow-700">
+                      The extraction agent ran successfully but did not return any structured data.
+                      This may be because:
+                    </p>
+                    <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
+                      <li>No API key is configured (check Settings)</li>
+                      <li>The document format is not supported</li>
+                      <li>The document content could not be processed</li>
+                    </ul>
+                    {results.extraction && (
+                      <details className="mt-3">
+                        <summary className="text-sm text-yellow-800 cursor-pointer font-medium">
+                          Show raw response
+                        </summary>
+                        <pre className="mt-2 rounded bg-yellow-100 p-3 text-xs overflow-auto">
+                          {JSON.stringify(results, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -181,32 +214,80 @@ export default function AnalysisPage() {
             </div>
 
             {/* Display risks as cards */}
-            {results.risks && typeof results.risks === 'object' ? (
+            {results.risks && typeof results.risks === 'object' && !results.risks.extraction_error ? (
               <div className="space-y-3">
-                {Object.entries(results.risks).map(([category, items]: [string, any]) => (
-                  <Card key={category} className="border-l-4 border-l-yellow-500">
-                    <CardHeader>
-                      <CardTitle className="text-base capitalize flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                        {category.replace(/_/g, ' ')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {Array.isArray(items) ? (
-                        <ul className="space-y-2">
-                          {items.map((item, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm">
-                              <span className="text-yellow-600 mt-0.5">•</span>
-                              <span>{typeof item === 'object' ? JSON.stringify(item) : String(item)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm">{String(items)}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                {Object.entries(results.risks).map(([category, riskData]: [string, any]) => {
+                  if (!riskData || typeof riskData !== 'object') return null;
+
+                  const severity = riskData.severity || 'LOW';
+                  const description = riskData.description || riskData.answer || String(riskData);
+                  const section = riskData.section || 'Not specified';
+
+                  // Skip if description is "Not applicable"
+                  if (description === 'Not applicable') return null;
+
+                  // Color based on severity
+                  const borderColor =
+                    severity === 'HIGH'
+                      ? 'border-l-red-500'
+                      : severity === 'MEDIUM'
+                      ? 'border-l-yellow-500'
+                      : 'border-l-green-500';
+
+                  const iconColor =
+                    severity === 'HIGH'
+                      ? 'text-red-600'
+                      : severity === 'MEDIUM'
+                      ? 'text-yellow-600'
+                      : 'text-green-600';
+
+                  return (
+                    <Card key={category} className={`border-l-4 ${borderColor}`}>
+                      <CardHeader>
+                        <CardTitle className="text-base capitalize flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className={`h-5 w-5 ${iconColor}`} />
+                            {category.replace(/_/g, ' ')}
+                          </div>
+                          <Badge
+                            variant={severity === 'HIGH' ? 'destructive' : severity === 'MEDIUM' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {severity}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <p className="text-sm text-gray-700">{description}</p>
+                        {section !== 'Not specified' && (
+                          <p className="text-xs text-gray-500">
+                            <strong>Reference:</strong> {section}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : results.risks?.extraction_error ? (
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <p className="font-medium text-yellow-800">Risk Assessment Error</p>
+                    <p className="text-sm text-yellow-700">{results.risks.extraction_error}</p>
+                    {results.risks.raw_response && (
+                      <details className="mt-3">
+                        <summary className="text-sm text-yellow-800 cursor-pointer font-medium">
+                          Show raw response
+                        </summary>
+                        <pre className="mt-2 rounded bg-yellow-100 p-3 text-xs overflow-auto">
+                          {results.risks.raw_response}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
               <pre className="rounded-lg bg-slate-100 p-4 overflow-auto text-sm">

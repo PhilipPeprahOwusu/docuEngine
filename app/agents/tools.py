@@ -33,23 +33,74 @@ def extract_document_info(document_text: str, llm=None) -> Dict[str, Any]:
             }
         }
 
-    prompt = f"""Extract from this document:
-    - Parties: company names or entities involved
-    - Dates: effective, expiration, signing dates
-    - Financial: amounts, currencies, payment terms
-    - Key Terms: obligations, liabilities, termination
+    prompt = f"""You are a contract analysis AI. Extract key information from the following document and return ONLY a valid JSON object with this exact structure:
 
-    Return as JSON.
+{{
+  "parties": ["party1", "party2", ...],
+  "dates": {{
+    "effective_date": "YYYY-MM-DD or description",
+    "expiration_date": "YYYY-MM-DD or description",
+    "signing_date": "YYYY-MM-DD or description"
+  }},
+  "amounts": {{
+    "contract_value": "amount and currency",
+    "payment_terms": "description"
+  }},
+  "key_terms": {{
+    "termination_notice": "description",
+    "liability_cap": "description",
+    "governing_law": "description",
+    "renewal_terms": "description"
+  }}
+}}
 
-    Document:
-    {document_text[:5000]}  # Limit context
-    """
+If a field is not found in the document, use "Not specified" as the value. Do not include any markdown formatting, code blocks, or explanatory text - return ONLY the raw JSON object.
 
-    response = llm.invoke(prompt)
+Document to analyze:
+{document_text[:8000]}
+"""
+
     try:
-        return json.loads(response.content)
-    except:
+        response = llm.invoke(prompt)
+        content = response.content.strip()
+
+        # Remove markdown code blocks if present
+        if content.startswith("```json"):
+            content = content.replace("```json", "").replace("```", "").strip()
+        elif content.startswith("```"):
+            content = content.replace("```", "").strip()
+
+        # Parse JSON
+        extracted_data = json.loads(content)
+
+        # Validate structure and add defaults if missing
+        result = {
+            "parties": extracted_data.get("parties", []),
+            "dates": extracted_data.get("dates", {}),
+            "amounts": extracted_data.get("amounts", {}),
+            "key_terms": extracted_data.get("key_terms", {})
+        }
+
+        return result
+
+    except json.JSONDecodeError as e:
+        # If JSON parsing fails, try to extract information using a simpler approach
+        print(f"JSON decode error: {e}")
+        print(f"LLM response: {response.content[:500]}")
+
+        # Return the raw response as a single field for debugging
         return {
+            "extraction_error": "Failed to parse LLM response as JSON",
+            "raw_response": response.content[:1000],
+            "parties": [],
+            "dates": {},
+            "amounts": {},
+            "key_terms": {}
+        }
+    except Exception as e:
+        print(f"Extraction error: {e}")
+        return {
+            "extraction_error": str(e),
             "parties": [],
             "dates": {},
             "amounts": {},
@@ -147,48 +198,97 @@ def compare_documents(
 def assess_risks(document_text: str, llm=None) -> Dict[str, Any]:
     """
     Assess risks in document.
-    Returns: risk categories with severity
+    Returns: risk categories with severity and compliance score
     """
     if not llm:
         # Mock risks
         return {
             "payment_obligations": {
-                "answer": "Payment due within 60 days with 2% late fee",
+                "description": "Payment due within 60 days with 2% late fee",
                 "severity": "MEDIUM",
                 "section": "Section 3.2"
             },
             "termination_clauses": {
-                "answer": "30 day notice required, no early termination fee",
+                "description": "30 day notice required, no early termination fee",
                 "severity": "LOW",
                 "section": "Section 8.1"
             },
             "liability_caps": {
-                "answer": "Liability capped at $500,000 total",
+                "description": "Liability capped at $500,000 total",
                 "severity": "HIGH",
                 "section": "Section 10.3"
             }
         }
 
-    questions = [
-        "What are payment obligations and penalties?",
-        "What are termination clauses and notice periods?",
-        "What liabilities or liability caps exist?",
-        "What are unusual or risky terms?",
-        "What compliance requirements are mentioned?"
-    ]
+    prompt = f"""You are a legal risk assessment AI. Analyze the following document and identify potential risks. Return ONLY a valid JSON object with this structure:
 
-    risks = {}
-    for question in questions:
-        # Would use RAG query here
-        prompt = f"Question: {question}\n\nDocument: {document_text[:3000]}"
-        answer = llm.invoke(prompt)
-        risks[question] = {
-            "answer": answer.content,
-            "severity": "MEDIUM",  # Would classify
-            "section": "TBD"
+{{
+  "payment_obligations": {{
+    "description": "description of payment risks",
+    "severity": "LOW|MEDIUM|HIGH",
+    "section": "section reference or 'Not specified'"
+  }},
+  "termination_clauses": {{
+    "description": "description of termination risks",
+    "severity": "LOW|MEDIUM|HIGH",
+    "section": "section reference or 'Not specified'"
+  }},
+  "liability_caps": {{
+    "description": "description of liability risks",
+    "severity": "LOW|MEDIUM|HIGH",
+    "section": "section reference or 'Not specified'"
+  }},
+  "indemnification": {{
+    "description": "description of indemnification risks",
+    "severity": "LOW|MEDIUM|HIGH",
+    "section": "section reference or 'Not specified'"
+  }},
+  "compliance_requirements": {{
+    "description": "description of compliance risks",
+    "severity": "LOW|MEDIUM|HIGH",
+    "section": "section reference or 'Not specified'"
+  }}
+}}
+
+Severity levels:
+- LOW: Minor issue, standard terms
+- MEDIUM: Moderate concern, review recommended
+- HIGH: Significant risk, requires attention
+
+If a risk category is not applicable, set description to "Not applicable" and severity to "LOW". Do not include markdown formatting or code blocks - return ONLY the raw JSON object.
+
+Document to analyze:
+{document_text[:8000]}
+"""
+
+    try:
+        response = llm.invoke(prompt)
+        content = response.content.strip()
+
+        # Remove markdown code blocks if present
+        if content.startswith("```json"):
+            content = content.replace("```json", "").replace("```", "").strip()
+        elif content.startswith("```"):
+            content = content.replace("```", "").strip()
+
+        # Parse JSON
+        risks = json.loads(content)
+
+        return risks
+
+    except json.JSONDecodeError as e:
+        print(f"Risk assessment JSON decode error: {e}")
+        print(f"LLM response: {response.content[:500]}")
+
+        return {
+            "extraction_error": "Failed to parse LLM response as JSON",
+            "raw_response": response.content[:1000]
         }
-
-    return risks
+    except Exception as e:
+        print(f"Risk assessment error: {e}")
+        return {
+            "extraction_error": str(e)
+        }
 
 
 # Tool 5: Semantic Search (for Q&A)

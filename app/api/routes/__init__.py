@@ -1,6 +1,6 @@
 """API Routes Package"""
 from fastapi import APIRouter
-from app.api.routes import users, items, auth, documents, policies, agents, approvals
+from app.api.routes import users, items, auth, documents, policies, agents, approvals, settings
 
 api_router = APIRouter()
 
@@ -11,4 +11,5 @@ api_router.include_router(documents.router, prefix="/documents", tags=["document
 api_router.include_router(policies.router, prefix="/policies", tags=["policies"])
 api_router.include_router(agents.router, prefix="/agents", tags=["ai-agents"])
 api_router.include_router(approvals.router, prefix="/approvals", tags=["approvals"])
+api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(items.router, prefix="/items", tags=["items"])

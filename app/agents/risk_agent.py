@@ -47,16 +47,32 @@ class RiskAgent(BaseAgentGraph):
         def score_risks(state: Dict[str, Any]) -> Dict[str, Any]:
             """Calculate compliance score based on risks"""
             risks = state.get("risks", {})
-            violations = state.get("policy_violations", [])
 
-            # Count high severity items
-            high_risk_count = sum(
-                1 for r in violations
-                if r.get("severity") == "HIGH"
-            )
+            # Count severity levels from risk assessment
+            high_count = 0
+            medium_count = 0
+            low_count = 0
 
-            # Simple scoring: start at 100, deduct 20 per high risk
-            compliance_score = max(0, 100 - (high_risk_count * 20))
+            for risk_category, risk_data in risks.items():
+                if risk_category == "extraction_error":
+                    # If there was an extraction error, return a neutral score
+                    return {"compliance_score": 50}
+
+                if isinstance(risk_data, dict):
+                    severity = risk_data.get("severity", "LOW")
+                    if severity == "HIGH":
+                        high_count += 1
+                    elif severity == "MEDIUM":
+                        medium_count += 1
+                    elif severity == "LOW":
+                        low_count += 1
+
+            # Scoring: Start at 100, deduct points based on severity
+            # HIGH risks: -15 points each
+            # MEDIUM risks: -8 points each
+            # LOW risks: -3 points each
+            compliance_score = 100 - (high_count * 15) - (medium_count * 8) - (low_count * 3)
+            compliance_score = max(0, min(100, compliance_score))  # Clamp between 0-100
 
             return {"compliance_score": compliance_score}
 

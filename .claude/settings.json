@@ -8,7 +8,8 @@
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed \"s/🤖 Generated with \\\\[Claude Code\\\\]\\(https:\\\\/\\\\/claude\\\\.com\\\\/claude-code\\)//g\" | sed \"s/Co-Authored-By: Claude <noreply@anthropic.com>//g\" | sed \"/^$/N;/^\\\\n$/!P;D\"' -- --all)",
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --env-filter ' *)",
       "Bash(gh repo *)",
-      "Bash(gh auth *)"
+      "Bash(gh auth *)",
+      "Bash(git -C /Users/philipowusu/Development/docuengine log --oneline)"
     ]
   }
 }
