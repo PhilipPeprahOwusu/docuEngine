@@ -232,6 +232,8 @@ async def list_available_models(
             ]
 
             available_models = []
+            errors = []
+
             for model in models_to_test:
                 try:
                     # Quick test with minimal tokens
@@ -243,15 +245,33 @@ async def list_available_models(
                     )
                     llm.invoke("test")
                     available_models.append(model)
+                    print(f"✅ Model {model} is accessible")
                 except Exception as e:
-                    # Model not available, skip it
+                    # Model not available, log the error
+                    error_msg = str(e)
+                    print(f"❌ Model {model} failed: {error_msg[:200]}")
+                    errors.append({"model": model, "error": error_msg[:200]})
                     continue
 
             if not available_models:
+                # Include first error in message for debugging
+                error_detail = ""
+                if errors:
+                    first_error = errors[0]["error"]
+                    if "authentication" in first_error.lower() or "401" in first_error:
+                        error_detail = " (Invalid API key or authentication failed)"
+                    elif "not_found" in first_error.lower() or "404" in first_error:
+                        error_detail = f" (Model access restricted - check your API tier)"
+                    elif "403" in first_error or "forbidden" in first_error.lower():
+                        error_detail = " (Access forbidden - insufficient permissions)"
+                    else:
+                        error_detail = f" ({first_error[:100]})"
+
                 return {
                     "success": False,
-                    "message": "No Claude models are accessible with this API key",
-                    "models": []
+                    "message": f"No Claude models are accessible with this API key{error_detail}",
+                    "models": [],
+                    "errors": errors[:3]  # Return first 3 errors for debugging
                 }
 
             return {
